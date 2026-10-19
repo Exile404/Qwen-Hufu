@@ -90,6 +90,19 @@ class Guard:
         self._turn_actions = 0
         self.audit.append("student_message", {"text": text})
 
+    def begin_system_turn(self, who: str) -> None:
+        """A run with no student message (the autopilot): no payment intent, nothing added as trusted.
+        Only rules that hold without a request apply, so it can pay signed recurring payments, convert
+        within the limits and freeze, but a payment to anyone (T1 `pay`) would need a student message."""
+        self._turn_intent = False
+        self._turn_recurring = False
+        self._turn_untrusted = False
+        self._turn_actions = 0
+        self.audit.append("system_run", {"by": who})
+
+    def end_system_turn(self) -> dict[str, Any] | None:
+        return self.anchor_now() if self.anchor and self._turn_actions else None
+
     def check_reply(self, reply: str) -> list[str]:
         return check_reply(reply, self.grounding) if self.enabled else []
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Anchor, Ban, CircleCheck, FlaskConical, Mail, ShieldCheck, ShieldOff, Timer, TriangleAlert } from "lucide-react";
+import { Anchor, Ban, CircleCheck, FlaskConical, KeyRound, Mail, ShieldCheck, ShieldOff, Timer, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
 import { RiskBadge, TxLink } from "@/components/hufu/bits";
@@ -162,6 +162,7 @@ export function AttackLab({ guardOn, explorer, onChange }: { guardOn: boolean; e
   const [email, setEmail] = useState(TEMPLATES.fees);
   const [planted, setPlanted] = useState<number | null>(null);
   const [jail, setJail] = useState<(TxResult & { attempt?: string }) | null>(null);
+  const [rogue, setRogue] = useState<TxResult | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
@@ -257,6 +258,37 @@ export function AttackLab({ guardOn, explorer, onChange }: { guardOn: boolean; e
                 Evidence: <TxLink hash={jail.tx_hash} explorer={explorer} />
               </p>
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card size="sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><KeyRound className="size-4" /> Stolen agent key</CardTitle>
+          <CardDescription>
+            Someone with the agent key pays the saved landlord 500 tHKD directly. It is inside every limit, so the vault
+            allows it, but Hufu never sent it: with the autopilot on, its tripwire freezes the wallet on the next run.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={busy !== null}
+              onClick={() => run("rogue", () => post<TxResult>("/lab/rogue-payment").then(setRogue))}
+            >
+              Use the key behind Hufu&apos;s back
+            </Button>
+            <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => run("pilot", () => post("/autopilot/run"))}>
+              Run autopilot now
+            </Button>
+          </div>
+          {rogue && (
+            <p className="text-xs">
+              {rogue.status === "success" ? "500 tHKD left the vault: " : `${rogue.status} `}
+              <TxLink hash={rogue.tx_hash} explorer={explorer} />. Watch the Autopilot card.
+            </p>
           )}
         </CardContent>
       </Card>

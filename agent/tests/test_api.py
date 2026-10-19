@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from hufu import api, seed
 from hufu.agent import Agent
+from hufu.autopilot import Autopilot
 from hufu.guard import Guard
 from hufu.tools import TOOLS_BY_NAME
 
@@ -16,7 +17,9 @@ pytestmark = pytest.mark.integration
 @pytest.fixture
 def client(ctx, monkeypatch):
     guard = Guard(ctx, anchor=False)
-    runtime = SimpleNamespace(chain=ctx.chain, ctx=ctx, guard=guard, agent=Agent(ctx, guard=guard))
+    runtime = SimpleNamespace(
+        chain=ctx.chain, ctx=ctx, guard=guard, agent=Agent(ctx, guard=guard), autopilot=Autopilot(ctx, guard)
+    )
     monkeypatch.setattr(api, "rt", lambda: runtime)
     c = TestClient(api.app)
     c.runtime = runtime
@@ -82,3 +85,16 @@ def test_guard_toggle_and_audit(client):
     assert a["verify"]["ok"] and a["verify"]["entries"] >= 2
     assert client.post("/audit/anchor").json()["status"] == "success"
     assert client.get("/audit").json()["last_anchor"]["in_local_log"] is True
+
+
+def test_autopilot_endpoints_and_the_rogue_payment_lab(client, monkeypatch):
+    monkeypatch.setattr("hufu.autopilot.GRACE_S", 0)
+    assert client.post("/autopilot", json={"enabled": True}).json()["enabled"] is True
+    client.post("/autopilot/run")  # baseline: pays the phone plan, flags the seeded scam
+    rogue = client.post("/lab/rogue-payment").json()
+    assert rogue["status"] == "success"
+    run = client.post("/autopilot/run").json()
+    assert any(e["kind"] == "tripwire" for e in run["events"])
+    status = client.get("/autopilot").json()
+    assert any(a["kind"] == "tripwire" for a in status["alerts"]) and status["plan"]["days"] == 30
+    assert client.get("/state").json()["status"]["frozen"] is True

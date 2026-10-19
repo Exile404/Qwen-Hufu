@@ -1,4 +1,4 @@
-"""Local state that does not belong on-chain: memo texts and the approval queue.
+"""Local state that does not belong on-chain: memo texts, the approval queue and autopilot alerts.
 
 Only keccak256(memo) goes on-chain; the text stays here, on the student's device.
 Rows are scoped to a vault address so a redeployed local chain starts clean.
@@ -35,6 +35,23 @@ CREATE TABLE IF NOT EXISTS approvals (
     decided_at  TEXT,
     tx_hash     TEXT,
     error       TEXT
+);
+CREATE TABLE IF NOT EXISTS alerts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    vault       TEXT NOT NULL,
+    level       TEXT NOT NULL,          -- action | warning | critical
+    kind        TEXT NOT NULL,
+    title       TEXT NOT NULL,
+    detail      TEXT NOT NULL,          -- JSON
+    dedupe      TEXT,                   -- the same alert is raised only once
+    created_at  TEXT NOT NULL,
+    UNIQUE (vault, dedupe)
+);
+CREATE TABLE IF NOT EXISTS kv (
+    vault TEXT NOT NULL,
+    key   TEXT NOT NULL,
+    value TEXT NOT NULL,                -- JSON
+    PRIMARY KEY (vault, key)
 );
 """
 
@@ -118,6 +135,40 @@ class Store:
         self.db.execute(
             "UPDATE approvals SET status = ?, decided_at = ?, tx_hash = ?, error = ? WHERE id = ? AND vault = ?",
             (status, _now(), tx_hash, error, approval_id, self.vault),
+        )
+        self.db.commit()
+
+    # --- autopilot alerts and small settings
+    def add_alert(
+        self, level: str, kind: str, title: str, detail: dict[str, Any], dedupe: str | None = None
+    ) -> bool:
+        """Record an alert for the student. Returns False if one with the same `dedupe` key exists."""
+        cur = self.db.execute(
+            "INSERT OR IGNORE INTO alerts (vault, level, kind, title, detail, dedupe, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (self.vault, level, kind, title, json.dumps(detail, default=str), dedupe, _now()),
+        )
+        self.db.commit()
+        return cur.rowcount == 1
+
+    def alerts(self, limit: int = 20) -> list[dict[str, Any]]:
+        rows = self.db.execute(
+            "SELECT id, level, kind, title, detail, created_at FROM alerts WHERE vault = ? ORDER BY id DESC LIMIT ?",
+            (self.vault, limit),
+        ).fetchall()
+        return [{**dict(r), "detail": json.loads(r["detail"])} for r in rows]
+
+    def get(self, key: str, default: Any = None) -> Any:
+        row = self.db.execute(
+            "SELECT value FROM kv WHERE vault = ? AND key = ?", (self.vault, key)
+        ).fetchone()
+        return json.loads(row["value"]) if row else default
+
+    def put(self, key: str, value: Any) -> None:
+        self.db.execute(
+            "INSERT INTO kv (vault, key, value) VALUES (?, ?, ?) "
+            "ON CONFLICT (vault, key) DO UPDATE SET value = excluded.value",
+            (self.vault, key, json.dumps(value, default=str)),
         )
         self.db.commit()
 

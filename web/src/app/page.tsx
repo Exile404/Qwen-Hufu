@@ -3,6 +3,7 @@
 import { Activity, Inbox, ScrollText, ShieldCheck, ShieldOff, Snowflake, Sun, FlaskConical } from "lucide-react";
 import { useCallback, useState } from "react";
 
+import { AutopilotCard } from "@/components/hufu/autopilot-card";
 import { SealLogo } from "@/components/hufu/bits";
 import { ChatPanel } from "@/components/hufu/chat-panel";
 import { HuitongCard } from "@/components/hufu/huitong-card";
@@ -11,7 +12,7 @@ import { ApprovalsCard, MandatesCard, WalletCard } from "@/components/hufu/side"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { API_URL, post, type AuditView, type Email, type HistoryItem, type State } from "@/lib/api";
+import { API_URL, post, type AuditView, type AutopilotStatus, type Email, type HistoryItem, type State } from "@/lib/api";
 import { usePoll } from "@/lib/use-poll";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ export default function Home() {
   const { data: history } = usePoll<{ history: HistoryItem[] }>("/history?limit=25", version, 5000);
   const { data: inbox } = usePoll<{ emails: Email[] }>("/inbox", version, 8000);
   const { data: audit } = usePoll<AuditView>("/audit?limit=40", version, 5000);
+  const { data: autopilot } = usePoll<AutopilotStatus>("/autopilot", version, 4000);
   const [busy, setBusy] = useState(false);
 
   const explorer = state?.explorer_tx_url ?? null;
@@ -95,6 +97,7 @@ export default function Home() {
             </div>
             <div className="space-y-4 lg:col-span-5 lg:h-[calc(100vh-9rem)] lg:overflow-y-auto lg:pr-1">
               <ApprovalsCard state={state} explorer={explorer} onChange={refresh} />
+              <AutopilotCard status={autopilot} onChange={refresh} />
               <WalletCard state={state} />
               <MandatesCard state={state} />
               <HuitongCard />

@@ -147,3 +147,38 @@ export const short = (s?: string | null, head = 6, tail = 4) =>
   s ? (s.length > head + tail + 1 ? `${s.slice(0, head)}…${s.slice(-tail)}` : s) : "";
 
 export const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+
+export type AutopilotLevel = "info" | "action" | "warning" | "critical";
+
+export type AutopilotEvent = {
+  level: AutopilotLevel;
+  kind: string;
+  title: string;
+  detail?: Record<string, unknown>;
+};
+
+export type Alert = AutopilotEvent & { id: number; created_at: string };
+
+export type PlanItem = { label: string; payee: string; token: string; amount: number; due: string };
+
+export type Plan = {
+  days: number;
+  upcoming: PlanItem[];
+  needed: Record<string, number>;
+  balances: Record<string, number>;
+  hkd_shortfall: number;
+  convert_usd: number;
+  convert_today_max: number;
+  days_to_convert: number;
+  covered: boolean;
+  note: string;
+  summary: string;
+};
+
+export type AutopilotStatus = {
+  enabled: boolean;
+  interval_s: number;
+  last_run: { at: string; events: AutopilotEvent[] } | null;
+  alerts: Alert[];
+  plan: Plan;
+};

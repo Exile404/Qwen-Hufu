@@ -263,6 +263,72 @@ class Chain:
             )
         return out
 
+    def mandate_schedule(self) -> list[dict[str, Any]]:
+        """The active recurring payments with raw unix times, for planning ahead."""
+        names = {p["address"]: p["name"] for p in self.payees()}
+        out = []
+        for i in range(self.vault.functions.mandateCount().call()):
+            payee, token, amount, interval, next_due, end, active, label = self.vault.functions.getMandate(
+                i
+            ).call()
+            if active:
+                out.append(
+                    {
+                        "id": i,
+                        "label": label,
+                        "payee": names.get(to_checksum_address(payee), payee),
+                        "token": self.symbol(token),
+                        "amount": from_units(amount),
+                        "interval": interval,
+                        "next_due": next_due,
+                        "end": end,
+                    }
+                )
+        return out
+
+    def block_number(self) -> int:
+        return self.w3.eth.block_number
+
+    def outflows(self, from_block: int, to_block: int) -> list[dict[str, Any]]:
+        """Money that left the vault through the agent key in blocks `from_block`..`to_block`."""
+        names = {p["address"]: p["name"] for p in self.payees()}
+
+        def who(addr: str) -> str:
+            return names.get(to_checksum_address(addr), to_checksum_address(addr))
+
+        def amount(units: int, token: str) -> str:
+            return f"{from_units(units):g} {self.symbol(token)}"
+
+        out = []
+        e = self.vault.events
+        for ev in e.Paid().get_logs(from_block=from_block, to_block=to_block):
+            a = ev["args"]
+            out.append((ev, f"paid {amount(a['amount'], a['token'])} to {who(a['to'])}"))
+        for ev in e.MandateExecuted().get_logs(from_block=from_block, to_block=to_block):
+            a = ev["args"]
+            out.append(
+                (
+                    ev,
+                    f"ran recurring payment #{a['id']}: {amount(a['amount'], a['token'])} to {who(a['payee'])}",
+                )
+            )
+        for ev in e.Swapped().get_logs(from_block=from_block, to_block=to_block):
+            a = ev["args"]
+            out.append(
+                (
+                    ev,
+                    f"converted {amount(a['amountIn'], a['tokenIn'])} to {amount(a['amountOut'], a['tokenOut'])}",
+                )
+            )
+        return [
+            {
+                "what": what,
+                "tx_hash": "0x" + ev["transactionHash"].hex().removeprefix("0x"),
+                "block": ev["blockNumber"],
+            }
+            for ev, what in sorted(out, key=lambda x: (x[0]["blockNumber"], x[0]["logIndex"]))
+        ]
+
     def requests(self) -> list[dict[str, Any]]:
         status_names = ["none", "pending", "approved", "rejected"]
         out = []

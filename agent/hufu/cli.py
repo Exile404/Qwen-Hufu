@@ -10,8 +10,9 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from hufu import approvals
+from hufu import approvals, planner
 from hufu.agent import Agent, Step
+from hufu.autopilot import Autopilot
 from hufu.chain import Chain, ChainNotDeployed
 from hufu.config import get_settings
 from hufu.guard import Guard
@@ -37,6 +38,9 @@ HELP = """[bold]Talk to the agent in plain English.[/] Try:
   /guard on|off     switch the off-chain guard (off = the "before" baseline; the vault still enforces limits)
   /audit            recent audit entries and a full hash-chain check
   /anchor           anchor the audit head on-chain now
+[bold]Autopilot[/]
+  /autopilot        run the autopilot once now: tripwire, due payments, funding, inbox scan
+  /plan [DAYS]      cash-flow plan for the next DAYS (default 30)
 [bold]Info[/]
   /status  /mandates  /history  /payees
 [bold]Session[/]
@@ -141,6 +145,15 @@ def command(ctx: Context, agent: Agent, guard: Guard, line: str) -> bool:
     elif cmd == "warp" and arg:
         ctx.chain.warp(float(arg))
         console.print(f"Chain time is now {ctx.chain.status()['chain_time']}")
+    elif cmd == "autopilot":
+        run = Autopilot(ctx, guard).tick()
+        for e in run["events"] or [{"level": "info", "title": "Nothing to do."}]:
+            colour = {"critical": "red", "warning": "yellow", "action": "green"}.get(e["level"], "dim")
+            console.print(f"[{colour}]{e['level']:>8}[/] {e['title']}")
+    elif cmd == "plan":
+        p = planner.plan(ctx.chain, int(arg) if arg else 30)
+        console.print(p["summary"])
+        show_json("Upcoming", p["upcoming"])
     elif cmd == "reset":
         agent.reset()
         console.print("[dim]Conversation cleared.[/]")

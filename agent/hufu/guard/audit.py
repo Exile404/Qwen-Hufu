@@ -80,3 +80,13 @@ class AuditLog:
             ).fetchone()
             is not None
         )
+
+    def mentions(self, text: str) -> bool:
+        """Whether any entry's data contains `text` (e.g. a transaction hash Hufu recorded)."""
+        return (
+            self.db.execute(
+                "SELECT 1 FROM audit WHERE vault = ? AND instr(lower(data), ?) > 0 LIMIT 1",
+                (self.vault, text.lower()),
+            ).fetchone()
+            is not None
+        )

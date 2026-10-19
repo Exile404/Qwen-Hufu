@@ -28,10 +28,14 @@ class Settings(BaseSettings):
     # Chain
     rpc_url: str = "http://127.0.0.1:8545"
     chain_id: int = 31337
-    explorer_tx_url: str = ""  # e.g. https://sepolia.basescan.org/tx/
+    explorer_tx_url: str = ""  # e.g. https://sepolia.etherscan.io/tx/
     agent_private_key: str = ""  # session key: limited by the vault policy
     owner_private_key: str = ""  # stands in for the student's phone/passkey in the demo
     guardian_private_key: str = ""  # trusted contact: can only pause
+
+    # Autopilot: the agent acting on its own between conversations (see autopilot.py)
+    autopilot: bool = False  # starting state; the dashboard can switch it on and off
+    autopilot_interval_s: int = 20
 
     # API
     api_host: str = "127.0.0.1"

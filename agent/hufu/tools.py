@@ -16,7 +16,7 @@ from typing import Any
 
 from eth_utils import is_address, to_checksum_address
 
-from hufu import huitong, seed
+from hufu import huitong, planner, seed
 from hufu.chain import Chain, memo_hash, to_units
 from hufu.store import Store
 
@@ -117,6 +117,11 @@ def compare_remittance(ctx: Context, args: dict) -> dict:
 
 def quote_conversion(ctx: Context, args: dict) -> dict:
     return ctx.chain.quote(args["from_token"], args["amount"])
+
+
+def plan_month(ctx: Context, args: dict) -> dict:
+    days = min(max(int(args.get("days") or 30), 1), 90)
+    return planner.plan(ctx.chain, days)
 
 
 # ---------------------------------------------------------------- T1: act within the mandate
@@ -399,6 +404,14 @@ TOOLS: list[Tool] = [
         quote_conversion,
         {"from_token": TOKEN, "amount": AMOUNT},
         ["from_token", "amount"],
+    ),
+    Tool(
+        "plan_month",
+        "T0",
+        "Cash-flow plan: the recurring payments due in the next days, what they need, and how much tUSD "
+        "to convert so the tHKD ones are covered.",
+        plan_month,
+        {"days": {"type": "integer", "description": "How many days ahead (default 30)"}},
     ),
     Tool(
         "pay",
