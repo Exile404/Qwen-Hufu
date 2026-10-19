@@ -34,7 +34,8 @@ The Qin-era Du Tiger Tally (杜虎符) carries a rule: the commander may act alo
 - **Your half of the tally:** approval queue; risky requests carry warnings in red.
 - **Vault:** balances and how much of today's limit is left; a kill switch anyone with a role can pull.
 - **Huitong 汇通:** licensed Dhaka ⇄ Hong Kong routes ranked by what actually arrives; stablecoins are not offered for Bangladesh, with the reason shown.
-- **Attack lab:** plant a phishing email, switch the guard off, and "send it anyway" as a jailbroken agent: the vault reverts it on-chain.
+- **Autopilot:** acts between chats. It pays signed bills when due, converts currency ahead so the next week's bills are covered, flags scam emails, and freezes the wallet if the agent key moves money Hufu did not send. A 30-day cash-flow plan sits on the same card.
+- **Attack lab:** plant a phishing email, switch the guard off, "send it anyway" as a jailbroken agent (the vault reverts it on-chain), or use a "stolen" agent key behind Hufu's back and watch the autopilot's tripwire freeze the wallet.
 
 ## Layout
 

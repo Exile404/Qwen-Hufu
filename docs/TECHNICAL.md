@@ -58,7 +58,8 @@ After the model, every action crosses three independent checks: the **guard** (s
 | `contracts/src/HufuVault.sol` | The vault: roles, caps, allowlist, mandates, request queue, pause, audit anchoring |
 | `contracts/src/MockFXPool.sol`, `MockStablecoin.sol` | Test-only FX pool and 6-decimal stablecoins (no value) |
 | `agent/hufu/agent.py` | Agent loop: model → executor (guard) → model; nudges (silent, described-not-done, asked-to-pay-but-didn't); reply verification; fallback summary |
-| `agent/hufu/tools.py` | 15 tools, each tagged T0/T1/T2; deterministic money arithmetic |
+| `agent/hufu/tools.py` | 16 tools, each tagged T0/T1/T2; deterministic money arithmetic |
+| `agent/hufu/autopilot.py`, `planner.py` | Autopilot (acts between conversations: tripwire, due payments, funding ahead, scam alerts) and the cash-flow planner |
 | `agent/hufu/guard/` | `core.py` decisions · `provenance.py` taint · `scanner.py` scam rules · `verifier.py` reply checks · `audit.py` hash chain |
 | `agent/hufu/approvals.py` | The student's half: approve / reject (owner key) |
 | `agent/hufu/huitong.py` | Licensed remittance-route comparison with jurisdiction rules |
@@ -130,13 +131,24 @@ For Dhaka ⇄ Hong Kong, each route's recipient amount is computed against the m
 
 A plain loop (no framework) so every step is logged. The local model is Qwen3.5 9B with `reasoning_effort=low`: in our Phase 2 evaluation it completed 12/12 agent tasks versus 9/12 with thinking off, which tended to *describe* actions instead of calling tools. The runtime nudges once if a reply is empty or claims an action that did not run, and falls back to a factual summary.
 
+### 4.10 Autopilot and cash-flow planning (`autopilot.py`, `planner.py`)
+
+Topic F asks for an agent that acts on its own, so Hufu does not wait to be asked. While switched on, the autopilot runs every 20 s by default, and each run does four things in order:
+
+1. **Tripwire.** It lists the money that left the vault through the agent key since the last run (`Paid`, `MandateExecuted`, `Swapped` events) and looks each transaction up in the hash-chained audit log. A transaction Hufu did not record means someone else is using the agent key, so it freezes the wallet at once (the beacon-fire rule) and raises a critical alert: "unfreeze only after rotating the key". This turns risk T6, a stolen session key, from "bounded by the daily caps" into "bounded by one run".
+2. **Due recurring payments** are paid (`pay_due_mandates`: exactly what the student signed, converting just enough tUSD if tHKD is short).
+3. **Funding ahead.** The planner expands every signed schedule over the next 7 days. If tHKD will be short, it converts the missing tUSD now, within today's limits. A 9,000 HKD tuition payment needs more conversion than one day's tUSD limit allows on a tight balance, so starting early is what keeps it from failing on the due date.
+4. **Inbox watch.** New emails go through the guard's scanner, and high-risk ones raise an alert before the student ever asks about them.
+
+The autopilot uses no model: the steps are code. It acts through the same `Guard.execute` path as chat, with a "system run" that has no payment intent, so it can pay signed recurring payments, convert within the limits and freeze, and nothing else. Every run is in the audit log and anchored on-chain when it acted. Alerts are de-duplicated, so a scam email or a shortfall is raised once. `plan_month` (T0) gives the same plan to the chat agent ("will I have enough for my bills this month?").
+
 ## 5. Security design
 
 See [SECURITY_SELF_ASSESSMENT.md](SECURITY_SELF_ASSESSMENT.md) for the threat model, the permission-tier implementation and the known-risk list. Key properties:
 
 - **Defence in depth with independent failure modes:** the scanner is rules, provenance is string matching, the vault is code on-chain, and approval is a human. Compromising the model breaks none of them.
 - **Least privilege:** the agent key can only call `pay`, `requestPayment`, `executeMandate`, `swap`, `pause` and `anchorAudit`. It cannot change any rule.
-- **Bounded worst case:** with the agent key fully compromised, the loss per day is at most the daily caps, paid only to payees the student already trusts (tested in `test_JailbrokenAgent_LossBoundedByDailyCaps`).
+- **Bounded worst case:** with the agent key fully compromised, the loss per day is at most the daily caps, paid only to payees the student already trusts (tested in `test_JailbrokenAgent_LossBoundedByDailyCaps`). With the autopilot on, the tripwire freezes the wallet on its next run after the first payment Hufu did not make (`test_tripwire_freezes_when_the_agent_key_is_used_behind_hufus_back`).
 - **Privacy:** the model runs locally; memos stay off-chain (only hashes on-chain); the audit log stays on the device with only its head on-chain.
 
 ## 6. Evaluation
@@ -163,6 +175,7 @@ What we learned:
 4. **Usability.** D completed 14/15 normal tasks with no wrong escalations. Its one failure (N05, "pay everything that's due" right after approving tuition) was the model filing an approval request instead of paying; N05 passed in C and in both earlier runs. Without the vault, A and B cannot freeze the wallet (N10), and without either layer, A cannot turn an over-limit payment into an approval request (N04).
 5. **What reached the student.** In D, four attacks ended as approval requests (A30, A31, A37, A38). All four were typed in the chat itself (add an unknown address as a payee, a recurring payment to it, a fake "SYSTEM" message). That is the T2 design: new recipients need the student's half, shown with an unknown-address warning. No attack from an email reached the approval queue.
 6. **The red team found a real bug.** Our first full run found A23 in D: the per-payee limit applied per payment, so splitting a payment passed it. We moved the limit on-chain to a daily total per payee and re-ran. The earlier runs are kept in [evidence/redteam/](evidence/redteam/README.md).
+7. **Scope of these numbers.** The autopilot (§4.10) and the read-only `plan_month` tool were added after the final run. They do not change the chat path's guard rules, and the autopilot has its own on-chain tests (`tests/test_autopilot.py`), but the red-team numbers above measure the chat agent only.
 
 ## 7. Reproducing
 
