@@ -94,7 +94,7 @@ Security issues: see [SECURITY.md](SECURITY.md).
 
 ## Ethereum Sepolia
 
-Live deployment (test tokens only): vault [`0xE1f0bA02B09b5FeF688324150753e4a827167c89`](https://sepolia.etherscan.io/address/0xE1f0bA02B09b5FeF688324150753e4a827167c89). The [evidence file](docs/evidence/onchain-11155111.md) links every transaction, including the jailbroken agent's transfer to a scam address, which the vault [reverted](https://sepolia.etherscan.io/tx/0x66a5d4eedb2e159bed4a15011c8fd4f2cedad30f42b22a07f47d5ff59a393d06) with `PayeeNotAllowed`.
+Live deployment (test tokens only), all source-verified on Etherscan and Sourcify: vault [`0xE1f0bA02B09b5FeF688324150753e4a827167c89`](https://sepolia.etherscan.io/address/0xE1f0bA02B09b5FeF688324150753e4a827167c89#code), tHKD [`0xC1eB…a42b`](https://sepolia.etherscan.io/address/0xC1eB2Aa0F6e9eC165E590D7113c401120ec4a42b#code), tUSD [`0x8335…6410`](https://sepolia.etherscan.io/address/0x8335360FAB7cBF8bd77A4C08202cb5E52EDa6410#code), FX pool [`0x5C3B…4697`](https://sepolia.etherscan.io/address/0x5C3B2488f65bA6CbBB46C9bd4B882a0CA9754697#code). The [evidence file](docs/evidence/onchain-11155111.md) links every transaction, including the jailbroken agent's transfer to a scam address, which the vault [reverted](https://sepolia.etherscan.io/tx/0x66a5d4eedb2e159bed4a15011c8fd4f2cedad30f42b22a07f47d5ff59a393d06) with `PayeeNotAllowed`.
 
 To deploy your own:
 
@@ -102,6 +102,7 @@ To deploy your own:
 make testnet-keys       # fresh owner/agent/guardian keys in .env.testnet (git-ignored); fund the owner
 make testnet-balance
 make deploy-testnet
+make verify-testnet     # publish the source on Etherscan (ETHERSCAN_API_KEY in .env.testnet)
 HUFU_ENV=testnet make evidence
 HUFU_ENV=testnet make api
 ```

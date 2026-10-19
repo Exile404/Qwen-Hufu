@@ -177,7 +177,7 @@ make test           # Foundry + Python unit tests
 make redteam        # the full red-team suite on a private chain
 ```
 
-**Ethereum Sepolia.** Deployed vault [`0xE1f0bA02B09b5FeF688324150753e4a827167c89`](https://sepolia.etherscan.io/address/0xE1f0bA02B09b5FeF688324150753e4a827167c89); every demo step and its transaction is in [evidence/onchain-11155111.md](evidence/onchain-11155111.md) (`HUFU_ENV=testnet make evidence`). Sepolia now prices contract creation and new storage several times higher than Foundry's local simulation, so `make deploy-testnet` raises gas limits 10× (`--gas-estimate-multiplier 1000`); the whole deployment used 34.3M gas and cost under 0.000000001 ETH at Sepolia's gas price.
+**Ethereum Sepolia.** Deployed vault [`0xE1f0bA02B09b5FeF688324150753e4a827167c89`](https://sepolia.etherscan.io/address/0xE1f0bA02B09b5FeF688324150753e4a827167c89#code), source-verified on Etherscan and Sourcify (exact match), as are the two test tokens and the FX pool (`make verify-testnet`); every demo step and its transaction is in [evidence/onchain-11155111.md](evidence/onchain-11155111.md) (`HUFU_ENV=testnet make evidence`). Sepolia now prices contract creation and new storage several times higher than Foundry's local simulation, so `make deploy-testnet` raises gas limits 10× (`--gas-estimate-multiplier 1000`); the whole deployment used 34.3M gas and cost under 0.000000001 ETH at Sepolia's gas price.
 
 ## 8. Limitations and next steps
 
