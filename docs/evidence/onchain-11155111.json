@@ -1,7 +1,7 @@
 {
   "chain_id": 11155111,
-  "vault": "0xE1f0bA02B09b5FeF688324150753e4a827167c89",
-  "generated": "2026-10-19 05:34 UTC",
+  "vault": "0x1F60ee92DAFF902a957801029312e39010144c1e",
+  "generated": "2026-10-19 20:16 UTC",
   "steps": [
     {
       "task": "1 Spend left today",
@@ -22,7 +22,7 @@
       "error": null,
       "summary": "Paid 4500 tHKD to landlord. 3500.0 tHKD left to spend today.",
       "txs": [
-        "0x70dae2ae29ab93589c9547d65a4de312849f643cafd0f6ed2806e81c0562aeaa"
+        "0xcdfb5d8b5939ef3087ef91ba8ae7c31c215366992847074388adf276426f2b2b"
       ]
     },
     {
@@ -34,7 +34,7 @@
       "error": null,
       "summary": "Paid 300 tHKD to roommate. 3200.0 tHKD left to spend today.",
       "txs": [
-        "0x9ddc95ba0317e87538e1e8fa70319142edcb6c210fdf3966c8852cb47b01436f"
+        "0x43308d9de10ea155145aa26f0ec6b29a878a5a7959b52461a36402e3f4a3945c"
       ]
     },
     {
@@ -46,9 +46,9 @@
       ],
       "result": "waiting_for_student_approval",
       "error": null,
-      "summary": "Not paid yet. Sent to Ayaan for approval (#3) because 800 tHKD is more than roommate can still receive today (200 of the 500 tHKD daily limit).",
+      "summary": "Not paid yet. Sent to Ayaan for approval (#5) because 800 tHKD is more than roommate can still receive today (200 of the 500 tHKD daily limit).",
       "txs": [
-        "0xf3cb8592ce84159ad8c4c2c75aba762dfac6910628484776f7d388a72d08b1ef"
+        "0x5abdba3d76dce8d492fb8e81a55dd286702c190f85eca2fd85fbf2c5cfef7e0c"
       ]
     },
     {
@@ -60,7 +60,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0xb5050cc0e5901fac03699f0734e1e122a5e129fe58e3838681049e95499b4fd6"
+        "0xf706c81ae650f69b3a6ccbdb47a8a620c1995829459f05eb20cc29c113888da6"
       ]
     },
     {
@@ -70,7 +70,7 @@
       "reasons": [],
       "result": "waiting_for_student_approval",
       "error": null,
-      "summary": "Proposed 9000 tHKD to university every 30 days until 2027-06-01, waiting for Ayaan's approval (#4).",
+      "summary": "Proposed 9000 tHKD to university every 30 days until 2027-06-01, waiting for Ayaan's approval (#6).",
       "txs": []
     },
     {
@@ -82,7 +82,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0x3705823cd143778483aefa4385cbf5ed0aa89baafdb3432df61940512c05e90e"
+        "0xc69991494fdf73d0b1bbfef1713258ad5ecaec0ef0faeb319a5b75b63743f2f1"
       ]
     },
     {
@@ -94,10 +94,10 @@
       "error": null,
       "summary": "Converted 513.08 tUSD to tHKD because tHKD was short. Paid Phone & data plan (198.0 tHKD); Tuition instalment (9000.0 tHKD).",
       "txs": [
-        "0x860dae2d2bf6b6f16a0cbbefb89c5425f0b962e5436dace5cd52363feb688e15",
-        "0x2d9e082b666297ac00f851c51f81c91ad3166d93d2cb9070ee6432ff8249684a",
-        "0xa2046e1377d8fdb86b696d4ab6d9f1e38c651082342f4e9d055bd6bb3beb4af4",
-        "0x154ba256ef57a84876f9ba1a9fa0d5c3bccb5dfe00d34cf4a469c35277656a03"
+        "0x7e6618fe503a4407867a41aeb9aa84d0bcbca97c6aa82fd3a70147765dec8f4f",
+        "0x7cf5c114ea3c0a29a5b3b15cf9536e5ac3956860083cb403bf6fd3d62a611cde",
+        "0x45f347ee91e64aabad7e2e3b503380fefaa97ced3e69e8e623dd734b7ed68342",
+        "0x9dd3988b0cbb57be09ad47074925fa3b58dd6970e96e31b1918aee1b69e64293"
       ]
     },
     {
@@ -158,7 +158,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0x80e6d1cad17b6a5eb8459c8a0d05fbdc797fde02002da482cdd899549a99131b"
+        "0xd82a1e374b7477c960eb66b4e8b5a1332a7013edeb0656b49510eac0ed8172c2"
       ]
     },
     {
@@ -182,7 +182,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0xf2c0ef25f91c2f4c55f7d63445240a5c81bc548f07f33c9dfa714785c62e32df"
+        "0x377a7f7001086d5514c759ab6b32835ae07882af311d3914d88ca7a3bed62910"
       ]
     },
     {
@@ -194,7 +194,89 @@
       "error": "PayeeNotAllowed(0x0ae40e2a586e794266ff120b9528c1a1ab75a409)",
       "summary": null,
       "txs": [
-        "0x66a5d4eedb2e159bed4a15011c8fd4f2cedad30f42b22a07f47d5ff59a393d06"
+        "0x874e19b8345f182d89d47a742185be47f68d0e76bcb151a9247432e9539a7f46"
+      ]
+    },
+    {
+      "task": "12 Register the student's passkey",
+      "action": "setPasskey (owner key)",
+      "decision": "\u2014",
+      "reasons": [],
+      "result": "success",
+      "error": null,
+      "summary": null,
+      "txs": [
+        "0x98f5cb17619e8efa5a9c199cb5ccb1e57e59bad49666e386b240104a1c1c71dc"
+      ]
+    },
+    {
+      "task": "12 Agent asks to add Mum as a payee",
+      "action": "propose_new_payee(label=Mum (Dhaka), address=0xc881a6468418Ff2ceD9526857407C5870838393e, reason=Ayaan asked to send money home)",
+      "decision": "ALLOW",
+      "reasons": [],
+      "result": "waiting_for_student_approval",
+      "error": null,
+      "summary": "Asked Ayaan to approve a new payee \"Mum (Dhaka)\" (#7).",
+      "txs": []
+    },
+    {
+      "task": "12 Student approves with passkey",
+      "action": "executeWithPasskey(setPayee) (WebAuthn, verified on-chain)",
+      "decision": "\u2014",
+      "reasons": [],
+      "result": "success",
+      "error": null,
+      "summary": null,
+      "txs": [
+        "0x0afd6f4db4902e1bacf5c65e9a5726b7007bf60c2640f921d899937e52cdf2e5"
+      ]
+    },
+    {
+      "task": "12 Passkey locks the owner key",
+      "action": "executeWithPasskey(setOwnerKeyRetired(true))",
+      "decision": "\u2014",
+      "reasons": [],
+      "result": "success",
+      "error": null,
+      "summary": null,
+      "txs": [
+        "0x2a18bad665c49fcc59d11ebf78d2e0207d945c3de883de0c942f87eeb4c485cc"
+      ]
+    },
+    {
+      "task": "12 Stolen owner key tries to withdraw",
+      "action": "withdraw 1000 tHKD to 0x0Ae40E2A\u2026 (owner key, locked)",
+      "decision": "\u2014",
+      "reasons": [],
+      "result": "reverted",
+      "error": "NotOwner()",
+      "summary": null,
+      "txs": [
+        "0xf0a355d573265f9687fce2fcf63287b5eaa9abaa7f00eb2717b4a65bf38237c5"
+      ]
+    },
+    {
+      "task": "12 Passkey unlocks the owner key",
+      "action": "executeWithPasskey(setOwnerKeyRetired(false))",
+      "decision": "\u2014",
+      "reasons": [],
+      "result": "success",
+      "error": null,
+      "summary": null,
+      "txs": [
+        "0xf31286073ded30a709725f61cb12394b1878a199109c71ee45d901642441eb98"
+      ]
+    },
+    {
+      "task": "12 Passkey removed for the live demo",
+      "action": "executeWithPasskey(removePasskey)",
+      "decision": "\u2014",
+      "reasons": [],
+      "result": "success",
+      "error": null,
+      "summary": null,
+      "txs": [
+        "0x127db3b18ba17a4f2a1d0dd4114622837d6a2d106861d26ff6c9a21605aca549"
       ]
     },
     {
@@ -206,7 +288,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0x990f7446685d71eccd595c652ba865879408183a9c6feb31e7c6a2e2c945f0da"
+        "0x4d5b05f6eba9415635850dfe38d5788ab6d7fd883e34031caa6f8f7cbf2e0294"
       ]
     }
   ]

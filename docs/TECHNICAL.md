@@ -174,7 +174,7 @@ How it is tested:
 - 17 Python tests through the API on a private chain.
 - A run of the real dashboard in Google Chrome with a virtual WebAuthn authenticator (`scripts/passkey_e2e.py`: register, approve, lock, freeze and unfreeze, cancel).
 
-On Sepolia the evidence script signs with a software passkey that produces the same WebAuthn format (§7). A passkey-signed action costs about 80,000 gas with the precompile.
+On Sepolia the evidence script signs with a software passkey that produces the same WebAuthn format (§7). With the precompile, a passkey-signed lock of the owner key used 168,000 gas there, and a passkey-approved new payee 379,000 (mostly the new storage).
 
 **Reads on a public node.** Chain reads are cached per block (state only changes when a block is mined) and independent reads are sent as one JSON-RPC batch. On Sepolia this brought a dashboard refresh from 4–16 s to under 0.5 s per endpoint.
 
@@ -234,7 +234,7 @@ make test           # Foundry + Python unit tests
 make redteam        # the full red-team suite on a private chain
 ```
 
-**Ethereum Sepolia.** Deployed vault [`0xE1f0bA02B09b5FeF688324150753e4a827167c89`](https://sepolia.etherscan.io/address/0xE1f0bA02B09b5FeF688324150753e4a827167c89#code), source-verified on Etherscan and Sourcify (exact match), as are the two test tokens and the FX pool (`make verify-testnet`); every demo step and its transaction is in [evidence/onchain-11155111.md](evidence/onchain-11155111.md) (`HUFU_ENV=testnet make evidence`). Sepolia now prices contract creation and new storage several times higher than Foundry's local simulation, so `make deploy-testnet` raises gas limits 10× (`--gas-estimate-multiplier 1000`); the whole deployment used 34.3M gas and cost under 0.000000001 ETH at Sepolia's gas price.
+**Ethereum Sepolia.** Deployed vault [`0x1F60ee92DAFF902a957801029312e39010144c1e`](https://sepolia.etherscan.io/address/0x1F60ee92DAFF902a957801029312e39010144c1e#code), source-verified on Etherscan and Sourcify (exact match), as are the two test tokens and the FX pool (`make verify-testnet`); every demo step and its transaction is in [evidence/onchain-11155111.md](evidence/onchain-11155111.md) (`HUFU_ENV=testnet make evidence`). Sepolia now prices contract creation and new storage several times higher than Foundry's local simulation, so `make deploy-testnet` raises gas limits 10× (`--gas-estimate-multiplier 1000`); the whole deployment used 43.9M gas and cost under 0.000000001 ETH at Sepolia's gas price. The evidence includes the passkey steps (§4.12): a payee approved with a passkey signature, the owner key locked by the passkey, and the locked key's withdrawal [reverted](https://sepolia.etherscan.io/tx/0xf0a355d573265f9687fce2fcf63287b5eaa9abaa7f00eb2717b4a65bf38237c5) with `NotOwner`. A software passkey signs there; it produces the same WebAuthn format as a phone, and the vault's check is the same.
 
 ## 8. Limitations and next steps
 

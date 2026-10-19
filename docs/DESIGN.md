@@ -188,7 +188,7 @@ Each phase was built, then tested by hand and by automated tests, and fixed befo
 | Custom vault instead of a full ERC-4337 smart account | Small, fully tested (99% line coverage), easy to explain and to audit. |
 | Simple explicit agent loop (no framework) | Every step visible and logged, which the security report needs. The runtime nudges the model if it goes silent, claims an action it didn't take, or was asked to pay and didn't call a payment tool, and falls back to a factual summary of what ran. |
 | Deterministic money arithmetic in tools | The model decides *what*; code decides *how much*. E.g. `pay_due_mandates` converts exactly the tUSD needed. The 9B model invented conversion amounts when asked to do it itself. |
-| The student's half as a passkey (WebAuthn), checked on-chain with OpenZeppelin's `WebAuthn` library | Keeps the student's half off the computer running the agent; works with phones, Touch ID, Windows Hello and security keys without a wallet app; the P-256 precompile (EIP-7951) makes a signed action about 80,000 gas on Sepolia. The owner key bootstraps the vault and can then be locked. |
+| The student's half as a passkey (WebAuthn), checked on-chain with OpenZeppelin's `WebAuthn` library | Keeps the student's half off the computer running the agent; works with phones, Touch ID, Windows Hello and security keys without a wallet app; the P-256 precompile (EIP-7951) keeps the signature check cheap on Sepolia. The owner key bootstraps the vault and can then be locked. |
 
 ### Guard decision rules (as built)
 

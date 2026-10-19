@@ -226,6 +226,8 @@ def write(rows: list[dict[str, Any]]) -> None:
         "",
         f"Generated {stamp} by `make evidence`. Vault `{chain.vault.address}`. Test tokens only.",
         "Each step went through the same guard as the agent; the decision and the on-chain result are shown.",
+        "In steps 12 a software passkey signs the student's half: the same WebAuthn format a phone returns to",
+        "the browser. The vault verifies each signature on-chain; the dashboard uses the student's real passkey.",
         "",
         "| Task | Action | Guard | Result | Transactions |",
         "|---|---|---|---|---|",

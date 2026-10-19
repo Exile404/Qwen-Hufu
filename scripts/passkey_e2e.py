@@ -10,6 +10,7 @@ Screenshots go to scripts/e2e-shots/ (git-ignored).
 """
 
 import os
+import signal
 import socket
 import subprocess
 import sys
@@ -77,6 +78,7 @@ def main() -> None:
             env=env,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            start_new_session=True,
         )
         web = subprocess.Popen(
             ["pnpm", "exec", "next", "dev", "-p", str(web_port)],
@@ -84,6 +86,7 @@ def main() -> None:
             env=os.environ | {"NEXT_PUBLIC_API_URL": f"http://127.0.0.1:{api_port}"},
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            start_new_session=True,
         )
         try:
             wait_for(f"http://127.0.0.1:{api_port}/passkey")
@@ -93,8 +96,9 @@ def main() -> None:
             ctx.store.bind_deployment(chain.deployment_marker())
             run_browser(f"http://localhost:{web_port}", ctx)
         finally:
-            web.terminate()
-            api.terminate()
+            for proc in (web, api):  # uv and pnpm start child processes: stop the whole group
+                os.killpg(proc.pid, signal.SIGTERM)
+                proc.wait(timeout=30)
 
 
 def run_browser(url: str, ctx: Context) -> None:
