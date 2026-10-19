@@ -32,9 +32,15 @@ The Qin-era Du Tiger Tally (杜虎符) carries a rule: the commander may act alo
 
 ## What it looks like
 
+![The Hufu dashboard: the guard flags a lookalike-address email, the agent refuses it, an over-limit payment waits for the student's passkey](docs/images/dashboard.png)
+
+<sub>The real dashboard on a local chain. Asked to pay rent to a "new wallet" from an email, Hufu flags the lookalike address and refuses. An over-limit payment to the roommate waits in the student's half of the tally, to be approved with a passkey.</sub>
+
 - **Chat:** every step shows the guard's decision (Allow / Ask Ayaan / Block) and the reason, with transaction links.
 - **Your half of the tally:** approval queue; risky requests carry warnings in red.
 - **Your half, on your device:** register a passkey (phone, Touch ID, Windows Hello or a security key). Every approval then shows exactly what will be signed, your fingerprint, face or PIN signs it, and the vault checks the signature on-chain. Lock the owner key and the key file on the computer has no power left; freezing still needs nobody's permission.
+
+  <img src="docs/images/passkey-dialog.png" alt="Sign with your passkey: Approve: Pay 800 tHKD to roommate" width="420">
 - **Vault:** balances and how much of today's limit is left; a kill switch anyone with a role can pull.
 - **Huitong 汇通:** licensed Dhaka ⇄ Hong Kong routes ranked by what actually arrives; stablecoins are not offered for Bangladesh, with the reason shown.
 - **Autopilot:** acts between chats. It pays signed bills when due, converts currency ahead so the next week's bills are covered, flags scam emails, and freezes the wallet if the agent key moves money Hufu did not send. A 30-day cash-flow plan sits on the same card.
