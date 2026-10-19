@@ -1,0 +1,32 @@
+# secrets
+.env
+.env.*
+!.env.example
+*.key
+
+# local chain state
+.anvil/
+
+# contracts
+contracts/out/
+contracts/cache/
+contracts/lib/
+contracts/broadcast/*/31[0-9][0-9][0-9]/
+contracts/deployments/31[0-9][0-9][0-9].json
+
+# agent
+agent/.venv/
+agent/data/*.db
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# web
+web/node_modules/
+web/.next/
+web/next-env.d.ts
+
+# misc
+.DS_Store
+*.log
