@@ -52,7 +52,7 @@ Coinbase launched Agentic Wallets (Feb 2026) with session caps and per-transacti
 
 | Criterion | Weight | What Hufu shows |
 |---|---|---|
-| Task completion | 40% | The tasks in §3 end to end, each with a transaction hash or a logged refusal, plus the autopilot (pays due bills, funds them ahead, watches the inbox); 14/15 normal tasks in the final red-team run; every demo step on Ethereum Sepolia ([evidence](evidence/onchain-11155111.md)) |
+| Task completion | 40% | The tasks in §3 end to end, each with a transaction hash or a logged refusal, plus the autopilot (pays due bills, funds them ahead, watches the inbox); 15/15 normal tasks in the final red-team run; every demo step on Ethereum Sepolia ([evidence](evidence/onchain-11155111.md)) |
 | Security & compliance | 30% | Four tiers enforced in code and on-chain, taint tracking, kill switch, stolen-key tripwire, hash-chained audit anchored on-chain, sanctions screening, travel-rule-ready records; red team: full Hufu stopped 40/40 attacks (§5.4) |
 | Innovation & interaction | 30% | Tiger-tally design; live jailbreak where the contract still says no; scam shield; Huitong remittance comparison |
 | On-chain bonus | 0–5 | Source-verified contracts on Sepolia; every step's transaction hash, including the jailbroken agent's transfer that the vault reverted |
@@ -178,12 +178,13 @@ Each phase was built, then tested by hand and by automated tests, and fixed befo
 | **P7 Testnet** | Ethereum Sepolia deployment and evidence capture | Every step's transaction on Etherscan; contracts source-verified |
 | **P8 Hardening** | Autopilot (tripwire, due payments, funding ahead, scam alerts), cash-flow planner, compliance controls (sanctions screening, transfer records), CI | Autopilot and compliance tests on a private chain; CI on every push |
 | **P9 Passkey** | The student's half as a WebAuthn passkey, verified on-chain (`executeWithPasskey`); owner key lockable; dashboard sign-and-confirm flow | 24 Foundry tests incl. fuzzing; API tests on a private chain; the dashboard in Google Chrome with a virtual authenticator (`make e2e-passkey`); passkey-signed transactions on Sepolia |
+| **P10 Final red team** | A re-run on the passkey release found the model inventing an amount for a saved payee (N06); the guard now asks unless the amount came from the student or a signed recurring payment | Final run on the submitted code: full Hufu 0/40 attacks and 15/15 normal tasks ([results](evidence/redteam/20261019-210204/summary.md)) |
 
 ## 7. Stack decisions
 
 | Choice | Why |
 |---|---|
-| Qwen3.5 9B via Ollama, local (`hufu-qwen`, 16K ctx), `reasoning_effort=low` | Phase 2 eval, 3 runs × 4 agent tasks: **12/12 with low vs 9/12 with thinking off** (off narrates actions instead of calling tools). Median 27 s per turn in the red-team run on one local GPU. Local = no personal data leaves the device. Any OpenAI-compatible API can be swapped in via `.env`. |
+| Qwen3.5 9B via Ollama, local (`hufu-qwen`, 16K ctx), `reasoning_effort=low` | Phase 2 eval, 3 runs × 4 agent tasks: **12/12 with low vs 9/12 with thinking off** (off narrates actions instead of calling tools). Median 32 s per turn in the final red-team run on one local GPU. Local = no personal data leaves the device. Any OpenAI-compatible API can be swapped in via `.env`. |
 | Anvil for dev, Ethereum Sepolia for evidence | Instant local loop; public explorer for judges. Plain Solidity, portable to FISCO BCOS (WeBank's chain) as a next step. |
 | Custom vault instead of a full ERC-4337 smart account | Small, fully tested (99% line coverage), easy to explain and to audit. |
 | Simple explicit agent loop (no framework) | Every step visible and logged, which the security report needs. The runtime nudges the model if it goes silent, claims an action it didn't take, or was asked to pay and didn't call a payment tool, and falls back to a factual summary of what ran. |

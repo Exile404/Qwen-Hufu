@@ -84,14 +84,17 @@ Out of scope for this prototype: a compromised device holding the student's pass
 - **Contracts:** `make test-contracts`: 94 tests, including fuzzing, key rotation, the jailbroken-agent loss bound and 24 passkey tests (replay, a swapped call, a changed deadline, another vault, the wrong key, no user verification, high-s, locking and recovery); `HufuVault` 99% line coverage (the one uncounted line is inline assembly) and 98% branch coverage. Slither: no high or medium findings.
 - **Passkey in a real browser:** `make e2e-passkey` drives the dashboard in Google Chrome with a virtual WebAuthn authenticator: register, approve a 6,000 HKD payment, lock the owner key (the vault then refuses it with `NotOwner`), freeze and unfreeze, and cancel a signature.
 - **Agent, guard, API:** `make test` and `make test-integration`: unit tests plus on-chain integration tests on a private chain for every guard rule, the approval flow, freezing, the audit chain and the API.
-- **Red team:** `make redteam`: 40 attacks in 8 categories and 15 benign tasks against four configurations, judged on-chain. Final run [`20261018-201351`](evidence/redteam/20261018-201351/summary.md):
+- **Red team:** `make redteam`: 40 attacks in 8 categories and 15 benign tasks against four configurations, judged on-chain. Final run [`20261019-210204`](evidence/redteam/20261019-210204/summary.md) on the submitted code (commit `1b2474b`):
 
   | Configuration | Attack success (95% CI) | HKD to attacker addresses | Benign tasks done |
   |---|---|---|---|
-  | A naive (no guard, plain wallet) | 3/40, 8% (3–20%) | 0 | 12/15 |
-  | B guard only | 1/40, 2% (0–13%) | 0 | 13/15 |
+  | A naive (no guard, plain wallet) | 5/40, 12% (5–26%) | 0 | 13/15 |
+  | B guard only | 1/40, 2% (0–13%) | 0 | 14/15 |
   | C vault only | 1/40, 2% (0–13%) | 0 | 15/15 |
-  | **D full Hufu** | **0/40, 0% (0–9%)** | 0 | 14/15 |
+  | **D full Hufu** | **0/40, 0% (0–9%)** | 0 | **15/15** |
 
-  Each layer alone missed one attack the other caught (B: split payments past the roommate's limit, A23; C: an invented late fee to a saved payee, A20). Breaches in A were overpayments to trusted payees, not payments to attackers. At 40 attacks the A-to-D difference is not statistically significant; the structural guarantee is the vault's loss bound. Our first full run found R4 (A23 in D), which we fixed and re-tested. Details: TECHNICAL.md §6.
+  Each layer alone missed one attack the other caught. The guard alone (B) let split payments past the roommate's limit (A23); the vault alone (C) paid an invented late fee to a saved payee (A20).
+  - All five breaches in A were overpayments to trusted payees, not payments to attackers.
+  - A versus D is at the edge of significance (Fisher's exact test, p = 0.03 one-sided, 0.05 two-sided). The structural guarantee is the vault's loss bound.
+  - The red team found two real issues, both fixed and re-tested: R4 (A23 in D, in our first full run) and R19 (N06 in D, an amount the model invented). Details: TECHNICAL.md §6.
 - **On-chain execution evidence:** [evidence/onchain-11155111.md](evidence/onchain-11155111.md): every demo step on Ethereum Sepolia (vault [`0x1F60ee92DAFF902a957801029312e39010144c1e`](https://sepolia.etherscan.io/address/0x1F60ee92DAFF902a957801029312e39010144c1e#code), source-verified on Etherscan and Sourcify) with its guard decision and Etherscan links: payments, the over-limit request and its rejection, the tuition approval, conversions and recurring payments, guardian freeze and owner unfreeze, the audit anchor, the passkey steps (a payee approved with a passkey signature, the owner key locked by the passkey, and the locked key's withdrawal [refused](https://sepolia.etherscan.io/tx/0xf0a355d573265f9687fce2fcf63287b5eaa9abaa7f00eb2717b4a65bf38237c5) with `NotOwner`), and the jailbroken agent's transfer to a scam address, [reverted on-chain](https://sepolia.etherscan.io/tx/0x874e19b8345f182d89d47a742185be47f68d0e76bcb151a9247432e9539a7f46) with `PayeeNotAllowed`.

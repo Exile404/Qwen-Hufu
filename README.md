@@ -13,7 +13,7 @@ Hufu is an AI agent wallet for international students. It pays rent, tuition and
 | Technical documentation | [docs/TECHNICAL.md](docs/TECHNICAL.md) |
 | Security self-assessment | [docs/SECURITY_SELF_ASSESSMENT.md](docs/SECURITY_SELF_ASSESSMENT.md) |
 | Compliance mapping | [docs/COMPLIANCE.md](docs/COMPLIANCE.md): HK, mainland China, Bangladesh and FATF rules mapped to Hufu's controls, with sources |
-| Red-team results | [docs/evidence/redteam/](docs/evidence/redteam/README.md): full Hufu stopped **40/40** attacks and completed 14/15 normal tasks |
+| Red-team results | [docs/evidence/redteam/](docs/evidence/redteam/README.md): full Hufu stopped **40/40** attacks and completed **15/15** normal tasks (no protection: 5/40 got through) |
 | On-chain evidence | [docs/evidence/onchain-11155111.md](docs/evidence/onchain-11155111.md): every demo step on Ethereum Sepolia with Etherscan links |
 | Design notes and development history | [docs/DESIGN.md](docs/DESIGN.md) |
 | Third-party licences | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) |
