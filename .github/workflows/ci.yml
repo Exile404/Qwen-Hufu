@@ -12,7 +12,7 @@ permissions:
 
 env:
   FOUNDRY_VERSION: v1.8.5
-  OZ_VERSION: v5.4.0
+  OZ_VERSION: v5.6.1
   FORGE_STD_VERSION: v1.17.0
 
 jobs:
@@ -35,7 +35,7 @@ jobs:
       - run: forge build --sizes
       - run: forge lint
       - run: forge test -vv
-      - run: forge coverage --report summary
+      - run: forge coverage --ir-minimum --report summary  # IR keeps OZ P256 assembly within the stack limit
 
   agent:
     name: Agent (Python)

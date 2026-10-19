@@ -6,7 +6,7 @@ Hufu's own code is released under the [MIT License](LICENSE). It is built on the
 
 | Component | Version | Licence | Use |
 |---|---|---|---|
-| [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) | 5.4.0 | MIT | `SafeERC20`, `ReentrancyGuard`, `ERC20` (test tokens) |
+| [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) | 5.6.1 | MIT | `SafeERC20`, `ReentrancyGuard`, `WebAuthn` and `P256` (passkey signatures checked on-chain), `ERC20` (test tokens) |
 | [forge-std](https://github.com/foundry-rs/forge-std) | 1.17.0 | MIT or Apache-2.0 | Test and deploy-script helpers |
 | [Foundry](https://github.com/foundry-rs/foundry) (forge, cast, anvil) | 1.8.5 | MIT or Apache-2.0 | Build, test and local-chain tooling (not distributed) |
 
@@ -22,6 +22,7 @@ Hufu's own code is released under the [MIT License](LICENSE). It is built on the
 | [HTTPX](https://github.com/encode/httpx) | 0.28.1 | BSD-3-Clause |
 | [PyYAML](https://github.com/yaml/pyyaml) | 6.0.3 | MIT |
 | [Rich](https://github.com/Textualize/rich) | 15.0.0 | MIT |
+| [PyCryptodome](https://github.com/Legrandin/pycryptodome) (P-256 for passkey checks and the test passkey) | 3.24.1 | BSD-2-Clause and public domain |
 | Development only: pytest, pytest-cov, Ruff, mypy | 9.1.1, 7.1.0, 0.17.1, 2.4.0 | MIT |
 
 ## Dashboard (`web/`)

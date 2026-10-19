@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 export PATH := $(HOME)/.foundry/bin:$(PATH)
 
-OZ_VERSION := v5.4.0
+OZ_VERSION := v5.6.1
 FORGE_STD_VERSION := v1.17.0
 
 .PHONY: help setup model doctor chain chain-reset deploy-local show-local testnet-keys testnet-balance deploy-testnet verify-testnet testnet-topup sanctions-update api web cli redteam evidence test test-contracts test-agent test-integration fmt

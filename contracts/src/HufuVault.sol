@@ -4,6 +4,8 @@ pragma solidity ^0.8.28;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {P256} from "@openzeppelin/contracts/utils/cryptography/P256.sol";
+import {WebAuthn} from "@openzeppelin/contracts/utils/cryptography/WebAuthn.sol";
 
 interface IFXPool {
     function tokenOutFor(address tokenIn) external view returns (address);
@@ -17,6 +19,9 @@ interface IFXPool {
 ///         `requestPayment` and needs the owner's half (`approveRequest`, T2). Policy changes are
 ///         owner-only, so the agent has no path to them (T3). As on the Du Tiger Tally, an
 ///         emergency needs no matching: the agent, guardian or owner can pause, only the owner unpauses.
+///         The owner's half can live on the student's device as a passkey: every owner action can be
+///         signed with WebAuthn and verified here (`executeWithPasskey`), and once the passkey has
+///         signed, the owner key can be locked so that only the passkey can act as owner.
 contract HufuVault is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -79,6 +84,16 @@ contract HufuVault is ReentrancyGuard {
     Mandate[] internal _mandates;
     PaymentRequest[] internal _requests;
 
+    /// @notice Domain tag of what the passkey signs (see `passkeyDigest`).
+    bytes32 public constant PASSKEY_DOMAIN = keccak256("HufuVault.executeWithPasskey.v1");
+    /// @notice The student's passkey: a P-256 public key from WebAuthn. (0, 0) = none registered.
+    bytes32 public passkeyX;
+    bytes32 public passkeyY;
+    /// @notice Passkey-signed actions so far. Each signature is bound to one nonce, so it works once.
+    uint256 public passkeyNonce;
+    /// @notice Once true, the owner key has no power left: only the passkey can act as owner.
+    bool public ownerKeyRetired;
+
     // --- agent actions
     event Paid(address indexed token, address indexed to, uint256 amount, bytes32 memoHash);
     event PaymentRequested(
@@ -116,6 +131,9 @@ contract HufuVault is ReentrancyGuard {
     event FxPoolSet(address indexed fxPool);
     event Withdrawn(address indexed token, address indexed to, uint256 amount);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event PasskeySet(bytes32 x, bytes32 y, bytes credentialId);
+    event PasskeyUsed(uint256 indexed nonce, bytes4 indexed action);
+    event OwnerKeyRetired(bool retired);
     // --- emergency
     event Paused(address indexed by);
     event Unpaused(address indexed by);
@@ -139,9 +157,19 @@ contract HufuVault is ReentrancyGuard {
     error UnknownRequest(uint256 id);
     error RequestNotPending(uint256 id);
     error NoFxPool();
+    error NoPasskey();
+    error InvalidPasskey();
+    error PasskeyExpired(uint64 validUntil);
+    error BadPasskeySignature();
+    error OnlyViaPasskey();
+    error OwnerKeyLocked();
+    error NoCall();
 
+    /// @dev The student's half: the owner key (until it is retired), or the student's passkey. A passkey
+    ///      action reaches the vault as a call from the vault itself, made only by `executeWithPasskey`
+    ///      after the signature checks out; nothing else in the vault calls itself.
     modifier onlyOwner() {
-        if (msg.sender != owner) revert NotOwner();
+        if (msg.sender != address(this) && (msg.sender != owner || ownerKeyRetired)) revert NotOwner();
         _;
     }
 
@@ -362,6 +390,78 @@ contract HufuVault is ReentrancyGuard {
         if (newOwner == address(0)) revert ZeroAddress();
         emit OwnershipTransferred(owner, newOwner);
         owner = newOwner;
+    }
+
+    // ------------------------------------------------------------------
+    // The student's passkey: the owner's half on the student's own device
+    // ------------------------------------------------------------------
+
+    /// @notice Register or replace the student's passkey. `credentialId` is only logged, so the
+    ///         dashboard knows which passkey to ask for.
+    // forge-lint: disable-next-item(reentrancy-events) -- P256 is an internal pure library, not an external call
+    function setPasskey(bytes32 x, bytes32 y, bytes calldata credentialId) external onlyOwner {
+        if (!P256.isValidPublicKey(x, y)) revert InvalidPasskey();
+        passkeyX = x;
+        passkeyY = y;
+        emit PasskeySet(x, y, credentialId);
+    }
+
+    /// @notice Remove the passkey, back to the owner key alone. Refused while the owner key is locked, so
+    ///         the vault always keeps a working owner.
+    function removePasskey() external onlyOwner {
+        if (ownerKeyRetired) revert OwnerKeyLocked();
+        passkeyX = 0;
+        passkeyY = 0;
+        emit PasskeySet(0, 0, "");
+    }
+
+    /// @notice Lock (true) or unlock (false) the owner key. Only a passkey signature can do this, so the
+    ///         key is never locked before the passkey has shown that it works.
+    function setOwnerKeyRetired(bool retired) external {
+        if (msg.sender != address(this)) revert OnlyViaPasskey();
+        ownerKeyRetired = retired;
+        emit OwnerKeyRetired(retired);
+    }
+
+    /// @notice Run one owner action that the student signed with their passkey. Anyone may submit it
+    ///         (the agent relays it and pays the gas), but nobody can change it: the signature covers
+    ///         this vault, this chain, the next nonce, a deadline and the exact call.
+    /// @dev Not nonReentrant: the self-call below enters guarded functions such as approveRequest. The
+    ///      nonce is spent before the call, so a signature can never be used twice.
+    // forge-lint: disable-next-item(reentrancy-events) -- the only call before the event is a staticcall to the P-256 precompile
+    function executeWithPasskey(bytes calldata data, uint64 validUntil, WebAuthn.WebAuthnAuth calldata auth)
+        external
+        returns (bytes memory result)
+    {
+        if (passkeyX == 0 && passkeyY == 0) revert NoPasskey();
+        // forge-lint: disable-next-line(block-timestamp) -- deadlines are minutes long
+        if (block.timestamp > validUntil) revert PasskeyExpired(validUntil);
+        if (data.length < 4) revert NoCall();
+        uint256 nonce = passkeyNonce;
+        bytes32 digest = passkeyDigest(data, nonce, validUntil);
+        if (!WebAuthn.verify(abi.encodePacked(digest), auth, passkeyX, passkeyY)) {
+            revert BadPasskeySignature();
+        }
+        passkeyNonce = nonce + 1;
+        emit PasskeyUsed(nonce, bytes4(data[:4]));
+        bool ok;
+        (ok, result) = address(this).call(data);
+        if (!ok) {
+            assembly ("memory-safe") {
+                revert(add(result, 0x20), mload(result)) // pass the vault's own error through
+            }
+        }
+    }
+
+    /// @notice The challenge the passkey signs for owner call `data` (WebAuthn: the 32 bytes of this hash).
+    function passkeyDigest(bytes calldata data, uint256 nonce, uint64 validUntil)
+        public
+        view
+        returns (bytes32)
+    {
+        return keccak256(
+            abi.encode(PASSKEY_DOMAIN, block.chainid, address(this), nonce, validUntil, keccak256(data))
+        );
     }
 
     // ------------------------------------------------------------------
