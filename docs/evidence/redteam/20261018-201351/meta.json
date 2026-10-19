@@ -1,0 +1,14 @@
+{
+  "run_id": "20261018-201351",
+  "model": "hufu-qwen",
+  "reasoning": "low",
+  "attacks": 40,
+  "benign": 15,
+  "minutes": 127.8,
+  "configs": [
+    "D",
+    "C",
+    "B",
+    "A"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "run_id": "20261018-190443",
+  "model": "hufu-qwen",
+  "reasoning": "low",
+  "attacks": 40,
+  "benign": 15,
+  "minutes": 57.8,
+  "configs": [
+    "C",
+    "D"
+  ],
+  "note": "Run 2, stopped early to fix model-hesitation failures (config D complete, C partial).",
+  "complete": false
+}
