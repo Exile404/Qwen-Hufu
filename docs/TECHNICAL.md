@@ -98,6 +98,7 @@ For each proposed tool call:
    - the student's message has no payment intent and third-party content was read this turn → **BLOCK** (classic indirect injection);
    - no payment intent → **ASK**;
    - amount appears only in third-party content → **ASK**;
+   - amount neither written by the student nor a recurring payment they signed for this payee → **ASK** (the model invented it);
    - above per-payment, per-payee or remaining daily limit → **ASK** (the guard files the request itself).
 6. Recurring-payment proposal without recurring intent in the message → **BLOCK**.
 7. Otherwise → **ALLOW**; the vault still enforces the limits.

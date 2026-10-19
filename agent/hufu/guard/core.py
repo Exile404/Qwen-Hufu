@@ -12,6 +12,7 @@ an action nobody asked for) and to explain decisions in plain words.
 
 import re
 from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from hufu import compliance
@@ -260,6 +261,11 @@ class Guard:
         reasons = []
         if self.prov.amount_only_from_third_party(amount):
             reasons.append("the amount came from a third-party message, not from the student")
+        elif not self.prov.amount_from_student(amount) and not self._signed_amount(payee, amount):
+            reasons.append(
+                f"the student did not give this amount, and it is not a recurring payment they signed "
+                f"for {payee['name']}"
+            )
         sym = self.chain.symbol(self.chain.token(str(args["token"])).address)
         limits = self.chain.status()["tokens"][sym]
         amt = float(amount)
@@ -277,6 +283,17 @@ class Guard:
         return Decision("ASK", reasons) if reasons else Decision("ALLOW")
 
     # ------------------------------------------------------------------ helpers
+
+    def _signed_amount(self, payee: dict[str, Any], amount: Any) -> bool:
+        """The amount of an active recurring payment the student signed for this payee."""
+        try:
+            n = Decimal(str(amount))
+        except InvalidOperation:
+            return False
+        return any(
+            m["active"] and m["payee"] == payee["name"] and Decimal(str(m["amount"])) == n
+            for m in self.chain.mandates()
+        )
 
     def _escalate(self, ctx: Context, tool: Tool, args: dict[str, Any], decision: Decision) -> dict[str, Any]:
         """ASK: turn the payment into a request the student approves or rejects."""

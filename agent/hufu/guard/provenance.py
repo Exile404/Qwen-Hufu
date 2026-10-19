@@ -26,6 +26,13 @@ def numbers_in(text: str) -> set[Decimal]:
     return out
 
 
+def _decimal(amount: object) -> Decimal | None:
+    try:
+        return Decimal(str(amount)).normalize()
+    except InvalidOperation:
+        return None
+
+
 @dataclass
 class UntrustedItem:
     source: str
@@ -52,10 +59,14 @@ class Provenance:
         a = address.lower()
         return [u for u in self.untrusted if a in u.text.lower()]
 
+    def amount_from_student(self, amount: object) -> bool:
+        """The student wrote this amount in one of their messages."""
+        n = _decimal(amount)
+        return n is not None and any(n in numbers_in(t) for t in self.trusted)
+
     def amount_only_from_third_party(self, amount: object) -> bool:
-        try:
-            n = Decimal(str(amount)).normalize()
-        except InvalidOperation:
+        n = _decimal(amount)
+        if n is None:
             return False
         said_by_student = any(n in numbers_in(t) for t in self.trusted)
         seen_elsewhere = any(n in numbers_in(u.text) for u in self.untrusted)
