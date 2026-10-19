@@ -1,0 +1,90 @@
+# Every push and pull request: contracts, agent (lint, types, unit + on-chain tests), web.
+# Tests that need the local model (marked `llm`) run on a developer machine with `make test-integration`.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  FOUNDRY_VERSION: v1.8.5
+  OZ_VERSION: v5.4.0
+  FORGE_STD_VERSION: v1.17.0
+
+jobs:
+  contracts:
+    name: Contracts (Foundry)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+      - name: Install libraries
+        run: |
+          forge install foundry-rs/forge-std@$FORGE_STD_VERSION --no-git
+          forge install OpenZeppelin/openzeppelin-contracts@$OZ_VERSION --no-git
+      - run: forge fmt --check
+      - run: forge build --sizes
+      - run: forge lint
+      - run: forge test -vv
+      - run: forge coverage --report summary
+
+  agent:
+    name: Agent (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+      - name: Install contract libraries (the on-chain tests deploy the vault to a private anvil chain)
+        working-directory: contracts
+        run: |
+          forge install foundry-rs/forge-std@$FORGE_STD_VERSION --no-git
+          forge install OpenZeppelin/openzeppelin-contracts@$OZ_VERSION --no-git
+      - uses: astral-sh/setup-uv@v5
+      - run: cp .env.example .env
+      - name: Sync
+        working-directory: agent
+        run: uv sync --frozen
+      - name: Lint and format
+        working-directory: agent
+        run: |
+          uv run ruff check hufu tests
+          uv run ruff format --check hufu tests
+      - name: Type check
+        working-directory: agent
+        run: uv run mypy
+      - name: Unit and on-chain tests (no model)
+        working-directory: agent
+        run: uv run pytest -m "not llm" --cov=hufu --cov-report=term
+
+  web:
+    name: Dashboard (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm build
+      - run: pnpm audit --prod
