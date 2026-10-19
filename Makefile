@@ -4,7 +4,7 @@ export PATH := $(HOME)/.foundry/bin:$(PATH)
 OZ_VERSION := v5.4.0
 FORGE_STD_VERSION := v1.17.0
 
-.PHONY: help setup model doctor chain chain-reset deploy-local show-local testnet-keys testnet-balance deploy-testnet verify-testnet api web cli redteam evidence test test-contracts test-agent test-integration fmt
+.PHONY: help setup model doctor chain chain-reset deploy-local show-local testnet-keys testnet-balance deploy-testnet verify-testnet sanctions-update api web cli redteam evidence test test-contracts test-agent test-integration fmt
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -76,6 +76,9 @@ verify-testnet: ## Publish the Sepolia contracts' source on Etherscan (ETHERSCAN
 		forge verify-contract $$addr $${c#*:} --chain sepolia --verifier etherscan \
 			--etherscan-api-key "$$ETHERSCAN_API_KEY" --rpc-url "$$RPC_URL" --guess-constructor-args --watch || exit 1; \
 	done
+
+sanctions-update: ## Fetch the OFAC SDN list's Ethereum addresses for counterparty screening
+	cd agent && uv run python -m hufu.sanctions_update
 
 api: ## Run the agent API on :8000 (auto-reload)
 	cd agent && uv run uvicorn hufu.api:app --reload --host 127.0.0.1 --port 8000

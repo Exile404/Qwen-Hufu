@@ -182,3 +182,23 @@ export type AutopilotStatus = {
   alerts: Alert[];
   plan: Plan;
 };
+
+export type TransferRecord = {
+  id: number;
+  created_at: string;
+  kind: string;
+  tx_hash: string | null;
+  token: string;
+  amount: number;
+  hkd_equivalent: number;
+  originator: { name: string; wallet: string };
+  beneficiary: { name: string; wallet: string };
+  purpose: string;
+};
+
+export type ComplianceView = {
+  screening: { entries: number; list_updated: string | null; ofac_entries: number; ofac_fetched: string | null };
+  record_threshold_hkd: number;
+  records: TransferRecord[];
+};
+

@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from hufu import approvals, planner
+from hufu import approvals, compliance, planner
 from hufu.agent import Agent, Step
 from hufu.autopilot import Autopilot
 from hufu.chain import Chain, ChainNotDeployed
@@ -41,6 +41,7 @@ HELP = """[bold]Talk to the agent in plain English.[/] Try:
 [bold]Autopilot[/]
   /autopilot        run the autopilot once now: tripwire, due payments, funding, inbox scan
   /plan [DAYS]      cash-flow plan for the next DAYS (default 30)
+  /compliance       screening list status and records of transfers of HK$8,000 or more
 [bold]Info[/]
   /status  /mandates  /history  /payees
 [bold]Session[/]
@@ -154,6 +155,9 @@ def command(ctx: Context, agent: Agent, guard: Guard, line: str) -> bool:
         p = planner.plan(ctx.chain, int(arg) if arg else 30)
         console.print(p["summary"])
         show_json("Upcoming", p["upcoming"])
+    elif cmd == "compliance":
+        show_json("Screening", compliance.screening_status())
+        show_json("Transfer records (HK$8,000 or more)", compliance.records(ctx, 10))
     elif cmd == "reset":
         agent.reset()
         console.print("[dim]Conversation cleared.[/]")
@@ -170,6 +174,7 @@ def main() -> int:
         console.print(f"[red]{e}[/]")
         return 1
     ctx = Context(chain, Store(s.db_path, chain.vault.address))
+    ctx.store.bind_deployment(chain.deployment_marker())
     guard = Guard(ctx)
     agent = Agent(ctx, guard=guard)
     console.print(

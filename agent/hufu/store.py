@@ -138,6 +138,22 @@ class Store:
         )
         self.db.commit()
 
+    # --- which deployment these rows belong to
+    def bind_deployment(self, marker: str) -> bool:
+        """Rows are keyed by vault address, but a fresh local chain redeploys the vault at the same
+        address. When the deployment underneath changed, forget this vault's rows (approvals, alerts,
+        audit, settings) so a new chain starts clean. Returns True if anything was forgotten."""
+        old = self.get("deployment")
+        if old == marker:
+            return False
+        if old is not None:
+            tables = [r[0] for r in self.db.execute("SELECT name FROM sqlite_master WHERE type = 'table'")]
+            for table in tables:
+                if "vault" in [c[1] for c in self.db.execute(f"PRAGMA table_info({table})")]:
+                    self.db.execute(f"DELETE FROM {table} WHERE vault = ?", (self.vault,))
+        self.put("deployment", marker)
+        return old is not None
+
     # --- autopilot alerts and small settings
     def add_alert(
         self, level: str, kind: str, title: str, detail: dict[str, Any], dedupe: str | None = None

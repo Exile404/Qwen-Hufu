@@ -1,0 +1,16 @@
+# Counterparty screening list. The guard checks every address before Hufu pays it, files a payment
+# request for it, or saves it as a payee, and the student's approval re-checks it before signing.
+# A hit is a BLOCK even when the student typed the address: screening is not a matter of consent.
+#
+# Sources combined at runtime:
+#   - this file: the project's own entries (scam reports, demo entries);
+#   - ofac_eth.txt: Ethereum addresses on the U.S. Treasury OFAC SDN list, written by
+#     `make sanctions-update` from https://sanctionslist.ofac.treas.gov/Home/static/sdn.html
+#
+# The address below is a demo stand-in for a sanctioned address (derived from keccak("hufu.sanctioned"),
+# controlled by no one) so the behaviour can be shown on a test chain.
+updated: 2026-10-19
+entries:
+  - address: "0xa5f2610Ac3DE7A4088CB686e2FD89C063a1dAcDE"
+    list: "Demo sanctions entry"
+    reason: "stands in for an OFAC-listed address in the demo"

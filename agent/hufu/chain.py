@@ -286,6 +286,11 @@ class Chain:
                 )
         return out
 
+    def deployment_marker(self) -> str:
+        """Identifies this deployment even when a fresh chain reuses the same vault address."""
+        block = self.deployment["deployBlock"]
+        return f"{self.settings.chain_id}:{block}:{self.w3.eth.get_block(block)['hash'].hex()}"
+
     def block_number(self) -> int:
         return self.w3.eth.block_number
 

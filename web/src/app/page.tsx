@@ -1,18 +1,27 @@
 "use client";
 
-import { Activity, Inbox, ScrollText, ShieldCheck, ShieldOff, Snowflake, Sun, FlaskConical } from "lucide-react";
+import { Activity, FlaskConical, Inbox, Scale, ScrollText, ShieldCheck, ShieldOff, Snowflake, Sun } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { AutopilotCard } from "@/components/hufu/autopilot-card";
 import { SealLogo } from "@/components/hufu/bits";
 import { ChatPanel } from "@/components/hufu/chat-panel";
 import { HuitongCard } from "@/components/hufu/huitong-card";
-import { ActivityPanel, AttackLab, AuditPanel, InboxPanel } from "@/components/hufu/panels";
+import { ActivityPanel, AttackLab, AuditPanel, CompliancePanel, InboxPanel } from "@/components/hufu/panels";
 import { ApprovalsCard, MandatesCard, WalletCard } from "@/components/hufu/side";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { API_URL, post, type AuditView, type AutopilotStatus, type Email, type HistoryItem, type State } from "@/lib/api";
+import {
+  API_URL,
+  post,
+  type AuditView,
+  type AutopilotStatus,
+  type ComplianceView,
+  type Email,
+  type HistoryItem,
+  type State,
+} from "@/lib/api";
 import { usePoll } from "@/lib/use-poll";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +33,7 @@ export default function Home() {
   const { data: inbox } = usePoll<{ emails: Email[] }>("/inbox", version, 8000);
   const { data: audit } = usePoll<AuditView>("/audit?limit=40", version, 5000);
   const { data: autopilot } = usePoll<AutopilotStatus>("/autopilot", version, 4000);
+  const { data: compliance } = usePoll<ComplianceView>("/compliance", version, 8000);
   const [busy, setBusy] = useState(false);
 
   const explorer = state?.explorer_tx_url ?? null;
@@ -116,6 +126,7 @@ export default function Home() {
                     )}
                   </TabsTrigger>
                   <TabsTrigger value="audit"><ScrollText /> Audit</TabsTrigger>
+                  <TabsTrigger value="compliance"><Scale /> Compliance</TabsTrigger>
                   <TabsTrigger value="lab"><FlaskConical /> Attack lab</TabsTrigger>
                 </TabsList>
                 <TabsContent value="activity" className="pt-2">
@@ -126,6 +137,9 @@ export default function Home() {
                 </TabsContent>
                 <TabsContent value="audit" className="pt-2">
                   <AuditPanel audit={audit} explorer={explorer} onChange={refresh} />
+                </TabsContent>
+                <TabsContent value="compliance" className="pt-2">
+                  <CompliancePanel view={compliance} explorer={explorer} />
                 </TabsContent>
                 <TabsContent value="lab" className="pt-2">
                   <AttackLab guardOn={guardOn} explorer={explorer} onChange={refresh} />

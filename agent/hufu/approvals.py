@@ -7,6 +7,7 @@ a passkey on the student's phone, and these functions would only build the trans
 from datetime import UTC, datetime
 from typing import Any
 
+from hufu import compliance
 from hufu.chain import to_units
 from hufu.tools import Context
 
@@ -22,6 +23,11 @@ def approve(ctx: Context, approval_id: int) -> dict[str, Any]:
     if a["status"] != "pending":
         raise ValueError(f"approval #{approval_id} is already {a['status']}")
     p, chain = a["payload"], ctx.chain
+    target = p.get("to") or p.get("address")
+    if target and (hit := compliance.screen(target)):  # the list may have changed since it was filed
+        reason = compliance.hit_reason(hit)
+        ctx.store.decide(approval_id, "failed", None, reason)
+        return {"approval_id": approval_id, "kind": a["kind"], "status": "blocked", "error": reason}
 
     if a["kind"] == "payment":
         res = chain.approve_request(a["onchain_id"])
@@ -44,7 +50,21 @@ def approve(ctx: Context, approval_id: int) -> dict[str, Any]:
         raise ValueError(f"unknown approval kind {a['kind']!r}")
 
     ctx.store.decide(approval_id, "approved" if res.ok else "failed", res.tx_hash, res.error)
-    return {"approval_id": approval_id, "kind": a["kind"], **res.as_dict()}
+    out = {"approval_id": approval_id, "kind": a["kind"], **res.as_dict()}
+    if res.ok and a["kind"] == "payment":
+        rec = compliance.record_transfer(
+            ctx,
+            kind="approved request",
+            to=p["to"],
+            beneficiary=p.get("payee") or p["to"],
+            token=p["token"],
+            amount=float(p["amount"]),
+            purpose=p.get("memo") or "",
+            tx_hash=res.tx_hash,
+        )
+        if rec:
+            out["transfer_record"] = rec
+    return out
 
 
 def reject(ctx: Context, approval_id: int) -> dict[str, Any]:

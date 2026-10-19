@@ -76,3 +76,17 @@ def test_huitong_excludes_stablecoins_for_bangladesh_and_ranks_routes():
     assert back["routes"][0]["route"].startswith("Licensed money service operator")
     with pytest.raises(ValueError):
         compare("to_the_moon", 1)
+
+
+def test_store_forgets_a_vaults_rows_when_its_deployment_changes(tmp_path):
+    from hufu.store import Store
+
+    s = Store(tmp_path / "t.db", "0xVAULT")
+    assert s.bind_deployment("31337:5:0xaaa") is False  # first sight: nothing to forget
+    s.add_approval("payee", {"address": "0x1"})
+    s.add_alert("warning", "scam_email", "x", {}, "email:4")
+    other = Store(tmp_path / "t.db", "0xOTHER")
+    other.add_approval("payee", {"address": "0x2"})
+    assert s.bind_deployment("31337:5:0xaaa") is False and len(s.approvals()) == 1  # same chain
+    assert s.bind_deployment("31337:5:0xbbb") is True  # fresh chain, same vault address
+    assert s.approvals() == [] and s.alerts() == [] and len(other.approvals()) == 1

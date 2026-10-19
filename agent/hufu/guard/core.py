@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
+from hufu import compliance
 from hufu.chain import Chain
 from hufu.guard.audit import AuditLog
 from hufu.guard.provenance import Provenance
@@ -162,6 +163,8 @@ class Guard:
             return Decision("ALLOW")
         if self.chain.status()["frozen"]:
             return Decision("BLOCK", ["the wallet is frozen; only the student can unfreeze it"])
+        if hit := self._screening_hit(tool, args):  # sanctions: not a matter of the student's consent
+            return Decision("BLOCK", [compliance.hit_reason(hit)])
         if tool.name in ("pay", "request_payment"):
             return self._decide_payment(tool, args)
         if tool.name == "propose_mandate" and not self._turn_recurring:
@@ -169,6 +172,22 @@ class Guard:
         if tool.name == "propose_new_payee":
             return self._decide_recipient(str(args["address"]), filing=True)
         return Decision("ALLOW")  # pay_due_mandates, convert_currency, propose_mandate: bounded by the vault
+
+    def _screening_hit(self, tool: Tool, args: dict[str, Any]) -> compliance.Hit | None:
+        """Every address this action would send money to, file a request for, or save."""
+        addresses: list[str] = []
+        if tool.name in ("pay", "request_payment", "propose_mandate"):
+            try:
+                addresses.append(self.chain.resolve_payee(str(args["payee"]))["address"])
+            except ValueError:
+                pass  # unknown name: the tool returns a clear error
+        elif tool.name == "propose_new_payee":
+            addresses.append(str(args["address"]))
+        elif tool.name == "pay_due_mandates":
+            addresses += [
+                self.chain.resolve_payee(m["payee"])["address"] for m in self.chain.mandates() if m["due_now"]
+            ]
+        return next((h for a in addresses if (h := compliance.screen(a))), None)
 
     def _saved(self) -> dict[str, dict[str, Any]]:
         return {p["address"].lower(): p for p in self.chain.payees() if p["allowed"]}

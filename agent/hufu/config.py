@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     owner_private_key: str = ""  # stands in for the student's phone/passkey in the demo
     guardian_private_key: str = ""  # trusted contact: can only pause
 
+    # The account holder, for travel-rule-ready transfer records (compliance.py)
+    account_holder: str = "Ayaan (demo persona)"
+
     # Autopilot: the agent acting on its own between conversations (see autopilot.py)
     autopilot: bool = False  # starting state; the dashboard can switch it on and off
     autopilot_interval_s: int = 20

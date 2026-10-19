@@ -8,7 +8,9 @@ Each run, in order:
   3. Keep the next FUND_DAYS of recurring payments funded: if tHKD will be short, convert just enough
      tUSD now, within today's limits, so a big bill never fails on its due date because the daily
      conversion limit was hit that morning.
-  4. Read new emails with the guard's scanner and alert the student about high-risk ones.
+  4. Re-screen the saved payees: a payee that has since been put on a sanctions list raises a critical
+     alert (the guard already refuses to pay it).
+  5. Read new emails with the guard's scanner and alert the student about high-risk ones.
 
 No model is involved: the steps are code, and each action goes through the same guard as chat, lands
 in the hash-chained audit log, and is anchored on-chain. The autopilot cannot pay anyone the student
@@ -20,7 +22,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from hufu import planner, seed
+from hufu import compliance, planner, seed
 from hufu.guard import Guard
 from hufu.guard.scanner import scan
 from hufu.tools import TOOLS_BY_NAME, Context
@@ -70,6 +72,7 @@ class Autopilot:
         events: list[Event] = []
         try:
             events += self._tripwire()
+            events += self._screen_payees()
             if not self.chain.status()["frozen"]:
                 events += self._pay_due()
                 events += self._fund_upcoming()
@@ -124,6 +127,22 @@ class Autopilot:
                 dedupe="tripwire:" + unknown[0]["tx_hash"],
             )
         ]
+
+    def _screen_payees(self) -> list[Event]:
+        out = []
+        for p in self.chain.payees():
+            if p["allowed"] and (hit := compliance.screen(p["address"])):
+                out.append(
+                    Event(
+                        "critical",
+                        "screening",
+                        f"Saved payee {p['name']} ({p['address'][:10]}…) is now on a screening list ({hit.list}). "
+                        "Hufu will not pay it; remove it from your payees.",
+                        {"payee": p, "list": hit.list, "reason": hit.reason},
+                        dedupe=f"screening:{p['address'].lower()}",
+                    )
+                )
+        return out
 
     def _pay_due(self) -> list[Event]:
         if not any(m["due_now"] for m in self.chain.mandates()):

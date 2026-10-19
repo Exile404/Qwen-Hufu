@@ -64,6 +64,7 @@ def run() -> list[dict[str, Any]]:
     s = get_settings()
     chain = Chain(s)
     ctx = Context(chain, Store(s.db_path, chain.vault.address))
+    ctx.store.bind_deployment(chain.deployment_marker())
     guard = Guard(ctx, anchor=False)
     rec = Recorder(ctx, guard)
     p = chain.deployment["payees"]

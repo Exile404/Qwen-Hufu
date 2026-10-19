@@ -16,7 +16,7 @@ from typing import Any
 
 from eth_utils import is_address, to_checksum_address
 
-from hufu import huitong, planner, seed
+from hufu import compliance, huitong, planner, seed
 from hufu.chain import Chain, memo_hash, to_units
 from hufu.store import Store
 
@@ -156,6 +156,7 @@ def pay(ctx: Context, args: dict) -> dict:
             out["summary"] = (
                 f"Paid {amount} {sym} to {payee['name']} as the due recurring payment '{m['label']}'."
             )
+            _record(ctx, out, "recurring payment", payee, sym, amount, m["label"])
         return out
     h = memo_hash(memo)
     if memo:
@@ -167,9 +168,26 @@ def pay(ctx: Context, args: dict) -> dict:
     if res.ok:
         out["left_today"] = f"{ctx.chain.status()['tokens'][sym]['left_today']} {sym}"
         out["summary"] = f"Paid {amount} {sym} to {to}. {out['left_today']} left to spend today."
+        _record(ctx, out, "payment", payee, sym, amount, memo)
     elif res.error and res.error.startswith(CAP_ERRORS):
         out["next_step"] = "Nothing was sent. If the student wants this payment, use request_payment."
     return out
+
+
+def _record(ctx: Context, out: dict, kind: str, payee: dict, token: str, amount: float, purpose: str) -> None:
+    """Transfers of HK$8,000 or more get a travel-rule-ready record on the device (compliance.py)."""
+    rec = compliance.record_transfer(
+        ctx,
+        kind=kind,
+        to=payee["address"],
+        beneficiary=payee["label"] or payee["name"] or payee["address"],
+        token=token,
+        amount=amount,
+        purpose=purpose,
+        tx_hash=out.get("tx_hash"),
+    )
+    if rec:
+        out["transfer_record"] = rec
 
 
 def _cover_hkd_shortfall(ctx: Context, shortfall: float) -> tuple[list[dict], str | None]:
@@ -222,6 +240,15 @@ def pay_due_mandates(ctx: Context, args: dict) -> dict:
         (paid if res.ok else not_paid).append({**item, **res.as_dict()})
         if res.ok:
             balance[m["token"]] -= m["amount"]
+            _record(
+                ctx,
+                paid[-1],
+                "recurring payment",
+                ctx.chain.resolve_payee(m["payee"]),
+                m["token"],
+                m["amount"],
+                m["label"],
+            )
 
     out = {"result": "done" if not not_paid else "partial", **out, "paid": paid}
     if not_paid:

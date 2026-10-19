@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from web3 import Web3
 
-from hufu import __version__, approvals, huitong, llm, planner, seed
+from hufu import __version__, approvals, compliance, huitong, llm, planner, seed
 from hufu.agent import Agent, Turn
 from hufu.autopilot import Autopilot
 from hufu.chain import Chain, ChainNotDeployed, to_units
@@ -53,6 +53,7 @@ class Runtime:
         s = get_settings()
         self.chain = Chain(s)
         self.ctx = Context(self.chain, Store(s.db_path, self.chain.vault.address))
+        self.ctx.store.bind_deployment(self.chain.deployment_marker())
         self.guard = Guard(self.ctx)
         self.agent = Agent(self.ctx, guard=self.guard)
         self.autopilot = Autopilot(self.ctx, self.guard, s.autopilot, s.autopilot_interval_s)
@@ -195,6 +196,17 @@ def audit(limit: int = 30) -> dict:
 @app.get("/plan")
 def plan(days: int = 30) -> dict:
     return planner.plan(rt().chain, min(max(days, 1), 90))
+
+
+@app.get("/compliance")
+def compliance_view(limit: int = 20) -> dict:
+    """Counterparty screening status and the travel-rule-ready records of transfers of HK$8,000 or more."""
+    r = rt()
+    return {
+        "screening": compliance.screening_status(),
+        "record_threshold_hkd": compliance.RECORD_THRESHOLD_HKD,
+        "records": compliance.records(r.ctx, limit),
+    }
 
 
 # ---------------------------------------------------------------- the autopilot
