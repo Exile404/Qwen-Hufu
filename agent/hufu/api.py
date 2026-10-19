@@ -12,12 +12,13 @@ from contextlib import asynccontextmanager
 from dataclasses import asdict
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from web3 import Web3
 
-from hufu import __version__, approvals, compliance, huitong, llm, planner, seed
+from hufu import __version__, approvals, compliance, huitong, llm, passkey, planner, seed, student
 from hufu.agent import Agent, Turn
 from hufu.autopilot import Autopilot
 from hufu.chain import Chain, ChainNotDeployed, to_units
@@ -46,6 +47,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(student.PasskeyRequired)
+def passkey_required(_: Request, exc: student.PasskeyRequired) -> JSONResponse:
+    """428: sign this challenge with the student's passkey, then repeat the request with `signed`."""
+    return JSONResponse(
+        status_code=428, content={"detail": "passkey signature required", "passkey": exc.challenge}
+    )
 
 
 class Runtime:
@@ -134,12 +143,18 @@ def state() -> dict:
         "mandates": r.chain.mandates(),
         "approvals": r.ctx.store.approvals("pending"),
         "guard": {"enabled": r.guard.enabled},
+        "passkey": passkey_view(r),
         "roles": {
             "owner": r.chain.owner.address,
             "agent": r.chain.agent.address,
             "guardian": r.chain.guardian.address if r.chain.guardian else None,
         },
     }
+
+
+def passkey_view(r: Runtime) -> dict:
+    pk = r.chain.passkey()
+    return {k: pk[k] for k in ("registered", "credential_id", "signatures_used", "owner_key_locked")}
 
 
 @app.get("/history")
@@ -258,24 +273,106 @@ def chat_reset() -> dict:
 
 
 # ---------------------------------------------------------------- the student's half
+# Each of these signs with the owner key, or, once a passkey is registered, answers 428 with a challenge;
+# the dashboard has the passkey sign it and repeats the request with `signed`.
+
+
+class AssertionIn(BaseModel):
+    """A WebAuthn assertion from navigator.credentials.get(), each field base64url."""
+
+    credential_id: str = Field("", max_length=2048)
+    authenticator_data: str = Field(max_length=2048)
+    client_data_json: str = Field(max_length=4096)
+    signature: str = Field(max_length=256)
+
+
+class SignedIn(BaseModel):
+    challenge_id: str = Field(max_length=64)
+    assertion: AssertionIn
+
+
+class StudentIn(BaseModel):
+    signed: SignedIn | None = None
+
+
+def _signed(body: StudentIn | None) -> dict | None:
+    return body.signed.model_dump() if body and body.signed else None
 
 
 @app.post("/approvals/{approval_id}/approve")
-def approve(approval_id: int) -> dict:
+def approve(approval_id: int, body: StudentIn | None = None) -> dict:
     with _lock:
         try:
-            return approvals.approve(rt().ctx, approval_id)
+            return approvals.approve(rt().ctx, approval_id, _signed(body))
         except ValueError as e:
             raise HTTPException(400, str(e)) from e
 
 
 @app.post("/approvals/{approval_id}/reject")
-def reject(approval_id: int) -> dict:
+def reject(approval_id: int, body: StudentIn | None = None) -> dict:
     with _lock:
         try:
-            return approvals.reject(rt().ctx, approval_id)
+            return approvals.reject(rt().ctx, approval_id, _signed(body))
         except ValueError as e:
             raise HTTPException(400, str(e)) from e
+
+
+@app.get("/passkey")
+def passkey_status() -> dict:
+    return passkey_view(rt())
+
+
+class PasskeyIn(StudentIn):
+    credential_id: str = Field(min_length=1, max_length=2048)  # base64url
+    public_key: str = Field(min_length=1, max_length=512)  # base64url SubjectPublicKeyInfo (getPublicKey())
+
+
+@app.post("/passkey")
+def passkey_register(body: PasskeyIn) -> dict:
+    """Register the student's passkey on the vault (owner key), or replace it (current passkey signs)."""
+    r = rt()
+    with _lock:
+        try:
+            res = student.register(
+                r.ctx,
+                passkey.b64url_decode(body.credential_id),
+                passkey.b64url_decode(body.public_key),
+                _signed(body),
+            )
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+        r.guard.audit.append("passkey_registered", res.as_dict())
+        return res.as_dict()
+
+
+@app.post("/passkey/remove")
+def passkey_remove(body: StudentIn | None = None) -> dict:
+    """Remove the passkey and go back to the owner key alone (only while the owner key is unlocked)."""
+    r = rt()
+    with _lock:
+        try:
+            res = student.remove_passkey(r.ctx, _signed(body))
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+        r.guard.audit.append("passkey_removed", res.as_dict())
+        return res.as_dict()
+
+
+class LockIn(StudentIn):
+    locked: bool
+
+
+@app.post("/passkey/lock")
+def passkey_lock(body: LockIn) -> dict:
+    """Lock or unlock the owner key. The vault only takes this from the passkey."""
+    r = rt()
+    with _lock:
+        try:
+            res = student.lock_owner_key(r.ctx, body.locked, _signed(body))
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+        r.guard.audit.append("owner_key_locked" if body.locked else "owner_key_unlocked", res.as_dict())
+        return res.as_dict()
 
 
 class FreezeIn(BaseModel):
@@ -293,10 +390,13 @@ def freeze(body: FreezeIn) -> dict:
 
 
 @app.post("/unfreeze")
-def unfreeze() -> dict:
+def unfreeze(body: StudentIn | None = None) -> dict:
     r = rt()
     with _lock:
-        res = r.chain.unpause()
+        try:
+            res = student.unfreeze(r.ctx, _signed(body))
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
         r.guard.audit.append("unfrozen", {"by": "student", **res.as_dict()})
         return res.as_dict()
 

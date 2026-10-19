@@ -10,7 +10,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from hufu import approvals, compliance, planner
+from hufu import approvals, compliance, planner, student
 from hufu.agent import Agent, Step
 from hufu.autopilot import Autopilot
 from hufu.chain import Chain, ChainNotDeployed
@@ -23,15 +23,21 @@ console = Console()
 TIER_STYLE = {"T0": "dim", "T1": "cyan", "T2": "yellow", "?": "red"}
 DECISION_STYLE = {"ALLOW": "green", "ASK": "yellow", "BLOCK": "bold red"}
 
+PASSKEY_ONLY = (
+    "[yellow]This wallet has a passkey: your half is signed on your device. Approve it in the dashboard "
+    "(make web), where your passkey is asked to sign.[/]"
+)
+
 HELP = """[bold]Talk to the agent in plain English.[/] Try:
   how much can I still spend today?    pay my rent    set up my tuition instalments
   pay my tuition    split utilities with Kevin    check my inbox and handle anything urgent
 
 [bold]Student (owner) commands[/]
   /approvals        list requests waiting for you
-  /approve [N]      approve request N, or the latest one (signs with the owner key)
+  /approve [N]      approve request N, or the latest one (owner key; with a passkey, use the dashboard)
   /reject [N]       reject request N, or the latest one
   /unfreeze         unfreeze the wallet
+  /passkey          passkey status (register and use it in the dashboard)
 [bold]Guardian[/]
   /freeze           freeze the wallet with the guardian key (no approval needed to stop)
 [bold]Guard & audit[/]
@@ -126,9 +132,17 @@ def command(ctx: Context, agent: Agent, guard: Guard, line: str) -> bool:
             )
         else:
             fn = approvals.approve if cmd == "approve" else approvals.reject
-            show_json(f"{cmd} #{target}", fn(ctx, target))
+            try:
+                show_json(f"{cmd} #{target}", fn(ctx, target))
+            except student.PasskeyRequired:
+                console.print(PASSKEY_ONLY)
     elif cmd == "unfreeze":
-        show_json("unfreeze", ctx.chain.unpause().as_dict())
+        try:
+            show_json("unfreeze", student.unfreeze(ctx).as_dict())
+        except student.PasskeyRequired:
+            console.print(PASSKEY_ONLY)
+    elif cmd == "passkey":
+        show_json("Passkey", {k: v for k, v in ctx.chain.passkey().items() if k not in ("x", "y")})
     elif cmd == "freeze":
         show_json("freeze (guardian)", ctx.chain.pause(ctx.chain.guardian).as_dict())
     elif cmd == "guard" and arg in ("on", "off"):

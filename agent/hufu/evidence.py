@@ -9,10 +9,13 @@ Writes docs/evidence/onchain-<chainId>.md and .json.
 """
 
 import json
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from hufu import approvals, seed
+from eth_utils import keccak, to_checksum_address
+
+from hufu import approvals, passkey, seed, student
 from hufu.chain import Chain, lookalike, memo_hash, to_units
 from hufu.config import REPO_ROOT, get_settings
 from hufu.guard import Guard
@@ -58,6 +61,16 @@ class Recorder:
             f"{task:<34} {self.rows[-1]['decision']:<6} {self.rows[-1]['result']:<30} {len(txs)} tx",
             flush=True,
         )
+
+
+def signed_by(pk: passkey.SoftwarePasskey, action: Callable[..., Any]) -> Any:
+    """What the dashboard does: run the action, sign the vault's challenge with the passkey, run it again."""
+    try:
+        return action(signed=None)
+    except student.PasskeyRequired as req:
+        ch = req.challenge
+        a = pk.sign(passkey.b64url_decode(ch["challenge"]))
+        return action(signed={"challenge_id": ch["challenge_id"], "assertion": a.to_browser()})
 
 
 def run() -> list[dict[str, Any]]:
@@ -149,8 +162,57 @@ def run() -> list[dict[str, Any]]:
         f"agent key pays 5000 tHKD to {seed.ATTACKER[:10]}… (guard skipped)",
         chain.pay("tHKD", seed.ATTACKER, to_units(5000), memo_hash(""), force=True).as_dict(),
     )
+    passkey_steps(rec, ctx, chain)
     rec.direct("Audit head anchored", "anchorAudit(head)", guard.anchor_now())
     return rec.rows
+
+
+def passkey_steps(rec: Recorder, ctx: Context, chain: Chain) -> None:
+    """The student's half as a passkey. A software passkey signs here (the same WebAuthn format a phone
+    returns to the browser); the dashboard uses the student's real one. The vault verifies every signature."""
+    pk = passkey.SoftwarePasskey()
+    rec.direct(
+        "12 Register the student's passkey",
+        "setPasskey (owner key)",
+        student.register(ctx, pk.credential_id, pk.spki()).as_dict(),
+    )
+    mum = to_checksum_address(keccak(text="hufu.payee.mum")[-20:])
+    r = rec.tool(
+        "12 Agent asks to add Mum as a payee",
+        "add my mum's wallet so I can send her money",
+        "propose_new_payee",
+        label="Mum (Dhaka)",
+        address=mum,
+        reason="Ayaan asked to send money home",
+    )
+    if r.get("approval_id"):
+        rec.direct(
+            "12 Student approves with passkey",
+            "executeWithPasskey(setPayee) (WebAuthn, verified on-chain)",
+            signed_by(pk, lambda signed: approvals.approve(ctx, r["approval_id"], signed)),
+        )
+    rec.direct(
+        "12 Passkey locks the owner key",
+        "executeWithPasskey(setOwnerKeyRetired(true))",
+        signed_by(pk, lambda signed: student.lock_owner_key(ctx, True, signed)).as_dict(),
+    )
+    fn = chain.vault.functions.withdraw(chain.tokens["tHKD"].address, seed.ATTACKER, to_units(1000))
+    rec.direct(
+        "12 Stolen owner key tries to withdraw",
+        f"withdraw 1000 tHKD to {seed.ATTACKER[:10]}… (owner key, locked)",
+        chain.send(fn, chain.owner, force=True).as_dict(),
+    )
+    rec.direct(
+        "12 Passkey unlocks the owner key",
+        "executeWithPasskey(setOwnerKeyRetired(false))",
+        signed_by(pk, lambda signed: student.lock_owner_key(ctx, False, signed)).as_dict(),
+    )
+    # Leave the testnet vault ready for the student's own passkey from the dashboard.
+    rec.direct(
+        "12 Passkey removed for the live demo",
+        "executeWithPasskey(removePasskey)",
+        signed_by(pk, lambda signed: student.remove_passkey(ctx, signed)).as_dict(),
+    )
 
 
 def write(rows: list[dict[str, Any]]) -> None:

@@ -2,7 +2,8 @@
 
 Signers mirror the tiger tally:
   agent    = the commander's half (session key; limited by the vault policy)
-  owner    = the student's half (stands in for their phone/passkey in the demo)
+  owner    = the student's half: an owner key, or the student's passkey once one is registered
+             (then the agent key only relays what the passkey signed; see student.py)
   guardian = a trusted contact who can only pause
 """
 
@@ -27,6 +28,7 @@ from web3.exceptions import ContractCustomError, ContractLogicError
 from web3.types import RPCEndpoint
 
 from hufu.config import REPO_ROOT, Settings, get_settings
+from hufu.passkey import b64url
 
 DECIMALS = 6
 UNIT = 10**DECIMALS
@@ -55,6 +57,12 @@ ERROR_HINTS = {
     "Slippage": "the conversion rate moved beyond the allowed slippage",
     "NoFxPool": "currency conversion is not set up",
     "ERC20InsufficientBalance": "the wallet does not hold enough of this token",
+    "NoPasskey": "no passkey is registered for this wallet",
+    "InvalidPasskey": "that is not a valid P-256 passkey public key",
+    "PasskeyExpired": "the passkey signature expired before it reached the chain; sign again",
+    "BadPasskeySignature": "the vault did not accept the passkey signature",
+    "OnlyViaPasskey": "only the student's passkey can do this",
+    "OwnerKeyLocked": "unlock the owner key first, so the wallet always keeps a working owner",
 }
 _AMOUNT_ERRORS = {"OverPerTxCap", "OverPayeeCap", "OverDailyCap", "Slippage", "ERC20InsufficientBalance"}
 
@@ -169,6 +177,11 @@ class Chain:
         self._symbol_by_addr = {c.address.lower(): sym for sym, c in self.tokens.items()}
         self._seed_names: dict[str, str] = {to_checksum_address(a): n for n, a in d["payees"].items()}
         self._errors = _error_table(abis.values())
+        self._selectors = {
+            keccak(text=f"{f['name']}({','.join(i['type'] for i in f['inputs'])})")[:4]: f["name"]
+            for f in abis["HufuVault"]
+            if f.get("type") == "function"
+        }
         self._block_cache: dict[Any, tuple[int, Any]] = {}
 
         self.agent: LocalAccount = Account.from_key(s.agent_private_key)
@@ -394,6 +407,27 @@ class Chain:
             for ev, what in sorted(out, key=lambda x: (x[0]["blockNumber"], x[0]["logIndex"]))
         ]
 
+    @per_block
+    def passkey(self) -> dict[str, Any]:
+        """The student's passkey as the vault knows it: public key, signatures used, owner key locked."""
+        v = self.vault.functions
+        x, y, nonce, retired = _batch(
+            self.w3, [v.passkeyX(), v.passkeyY(), v.passkeyNonce(), v.ownerKeyRetired()]
+        )
+        x, y = int.from_bytes(x, "big"), int.from_bytes(y, "big")
+        credential_id = None
+        if x or y:
+            logs = self.vault.events.PasskeySet().get_logs(from_block=self.deployment["deployBlock"])
+            credential_id = b64url(logs[-1]["args"]["credentialId"]) if logs else None
+        return {
+            "registered": bool(x or y),
+            "x": x,
+            "y": y,
+            "credential_id": credential_id,
+            "signatures_used": nonce,
+            "owner_key_locked": retired,
+        }
+
     def requests(self) -> list[dict[str, Any]]:
         status_names = ["none", "pending", "approved", "rejected"]
         out = []
@@ -484,6 +518,19 @@ class Chain:
         for ev in e.MandateCreated().get_logs(from_block=start):
             a = ev["args"]
             add(ev, {"kind": "mandate_created", "mandate_id": a["id"], "label": a["label"]})
+        for ev in e.PasskeySet().get_logs(from_block=start):
+            add(ev, {"kind": "passkey_set" if any(ev["args"]["x"]) else "passkey_removed"})
+        for ev in e.PasskeyUsed().get_logs(from_block=start):
+            a = ev["args"]
+            add(
+                ev,
+                {
+                    "kind": "passkey_signed",
+                    "action": self._selectors.get(a["action"], "0x" + a["action"].hex()),
+                },
+            )
+        for ev in e.OwnerKeyRetired().get_logs(from_block=start):
+            add(ev, {"kind": "owner_key_locked" if ev["args"]["retired"] else "owner_key_unlocked"})
         for ev in e.Paused().get_logs(from_block=start):
             add(ev, {"kind": "frozen", "by": ev["args"]["by"]})
         for ev in e.Unpaused().get_logs(from_block=start):
@@ -580,6 +627,23 @@ class Chain:
 
     def unpause(self) -> TxResult:
         return self.send(self.vault.functions.unpause(), self.owner)
+
+    # ------------------------------------------------------------------ the student's passkey
+
+    def owner_call(self, name: str, *args: Any) -> tuple[Any, bytes]:
+        """An owner function call, and its calldata (what a passkey signs)."""
+        fn = getattr(self.vault.functions, name)(*args)
+        return fn, bytes.fromhex(self.vault.encode_abi(name, args=list(args)).removeprefix("0x"))
+
+    def passkey_challenge(self, data: bytes, valid_until: int) -> bytes:
+        """The 32 bytes the passkey signs for `data`: bound to this vault, chain, next nonce and deadline."""
+        v = self.vault.functions
+        return bytes(v.passkeyDigest(data, v.passkeyNonce().call(), valid_until).call())
+
+    def send_with_passkey(self, data: bytes, valid_until: int, auth: tuple[Any, ...]) -> TxResult:
+        """Relay a passkey-signed owner action. The agent key pays the gas; the vault checks the signature,
+        so the relayer cannot change what the student signed."""
+        return self.send(self.vault.functions.executeWithPasskey(data, valid_until, auth), self.agent)
 
     # ------------------------------------------------------------------ dev only (local anvil)
 

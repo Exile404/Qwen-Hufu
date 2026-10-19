@@ -28,6 +28,8 @@ CAP_ERRORS = ("PayeeNotAllowed", "OverPerTxCap", "OverPayeeCap", "OverDailyCap")
 class Context:
     chain: Chain
     store: Store
+    # Passkey challenges issued to the dashboard and not yet signed (see student.py).
+    passkey_pending: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
