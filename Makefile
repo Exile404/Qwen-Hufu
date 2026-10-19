@@ -4,7 +4,7 @@ export PATH := $(HOME)/.foundry/bin:$(PATH)
 OZ_VERSION := v5.4.0
 FORGE_STD_VERSION := v1.17.0
 
-.PHONY: help setup model doctor chain chain-reset deploy-local show-local testnet-keys testnet-balance deploy-testnet api web cli redteam evidence test test-contracts test-agent test-integration fmt
+.PHONY: help setup model doctor chain chain-reset deploy-local show-local testnet-keys testnet-balance deploy-testnet verify-testnet api web cli redteam evidence test test-contracts test-agent test-integration fmt
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -65,6 +65,17 @@ deploy-testnet: ## Deploy + seed on Ethereum Sepolia using .env.testnet
 	cd contracts && set -a && . ../.env && . ../.env.testnet && set +a && \
 		forge script script/Deploy.s.sol:Deploy --rpc-url $$RPC_URL --broadcast --slow -q --gas-estimate-multiplier 1000
 	@echo "Deployed to Sepolia. Run the API with: HUFU_ENV=testnet make api"
+
+verify-testnet: ## Publish the Sepolia contracts' source on Etherscan (ETHERSCAN_API_KEY in .env.testnet)
+	@set -a && . ./.env.testnet && set +a && test -n "$$ETHERSCAN_API_KEY" || \
+		(echo "Add ETHERSCAN_API_KEY to .env.testnet first." && exit 1)
+	@set -a && . ./.env.testnet && set +a && d=$$PWD/contracts/deployments/11155111.json && cd contracts && \
+	for c in vault:src/HufuVault.sol:HufuVault tHKD:src/MockStablecoin.sol:MockStablecoin \
+		tUSD:src/MockStablecoin.sol:MockStablecoin fxPool:src/MockFXPool.sol:MockFXPool; do \
+		addr=$$(jq -r ".$${c%%:*}" $$d); echo "== $${c%%:*} $$addr"; \
+		forge verify-contract $$addr $${c#*:} --chain sepolia --verifier etherscan \
+			--etherscan-api-key "$$ETHERSCAN_API_KEY" --rpc-url "$$RPC_URL" --guess-constructor-args --watch || exit 1; \
+	done
 
 api: ## Run the agent API on :8000 (auto-reload)
 	cd agent && uv run uvicorn hufu.api:app --reload --host 127.0.0.1 --port 8000
