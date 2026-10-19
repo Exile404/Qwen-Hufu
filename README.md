@@ -4,7 +4,7 @@
 
 **A tiger tally for your AI.**
 
-Hufu is an AI agent wallet for international students. It pays rent, tuition and bills in stablecoins, converts currency, compares licensed remittance routes home, and catches scams. Like the two halves of an ancient Chinese tiger tally, the agent can act alone on small, pre-approved payments; anything bigger needs the student's half. The rules are enforced three times: by an off-chain **guard**, by an on-chain **vault** contract, and by the **student**. A jailbroken model still cannot pay anyone the student hasn't approved, or spend beyond the limits the student signed.
+Hufu is an AI agent wallet for international students. It pays rent, tuition and bills in stablecoins, converts currency, compares licensed remittance routes home, and catches scams. Like the two halves of an ancient Chinese tiger tally, the agent can act alone on small, pre-approved payments; anything bigger needs the student's half, signed with a **passkey on their own phone or laptop and verified by the vault on-chain**. The rules are enforced three times: by an off-chain **guard**, by an on-chain **vault** contract, and by the **student**. A jailbroken model still cannot pay anyone the student hasn't approved, or spend beyond the limits the student signed.
 
 2026 Shenzhen FinTechathon, International Track · Topic F (Agent Wallet), with a Topic C (cross-border student finance) demo story. Test tokens only; no real value.
 
@@ -27,13 +27,14 @@ The Qin-era Du Tiger Tally (杜虎符) carries a rule: the commander may act alo
 |---|---|---|
 | T0 Read | read balances, limits, payees, history, inbox, remittance quotes | — |
 | T1 Act within mandate | pay saved payees within per-payment, per-payee daily and overall daily limits; pay due recurring payments; convert currency; **freeze** | guard + vault |
-| T2 Ask the student | file a request for a new recipient, an over-limit amount, a new recurring payment, or anything traced to an email | guard; only the student's key executes |
+| T2 Ask the student | file a request for a new recipient, an over-limit amount, a new recurring payment, or anything traced to an email | guard; only the student's half executes (a passkey signature the vault verifies) |
 | T3 Never | change limits, payees, its own key or expiry; unfreeze | no tool exists; vault reverts |
 
 ## What it looks like
 
 - **Chat:** every step shows the guard's decision (Allow / Ask Ayaan / Block) and the reason, with transaction links.
 - **Your half of the tally:** approval queue; risky requests carry warnings in red.
+- **Your half, on your device:** register a passkey (phone, Touch ID, Windows Hello or a security key). Every approval then shows exactly what will be signed, your fingerprint, face or PIN signs it, and the vault checks the signature on-chain. Lock the owner key and the key file on the computer has no power left; freezing still needs nobody's permission.
 - **Vault:** balances and how much of today's limit is left; a kill switch anyone with a role can pull.
 - **Huitong 汇通:** licensed Dhaka ⇄ Hong Kong routes ranked by what actually arrives; stablecoins are not offered for Bangladesh, with the reason shown.
 - **Autopilot:** acts between chats. It pays signed bills when due, converts currency ahead so the next week's bills are covered, flags scam emails, and freezes the wallet if the agent key moves money Hufu did not send. A 30-day cash-flow plan sits on the same card.
@@ -43,7 +44,7 @@ The Qin-era Du Tiger Tally (杜虎符) carries a rule: the commander may act alo
 ## Layout
 
 ```
-contracts/   Solidity (Foundry): HufuVault, MockFXPool, MockStablecoin, deploy script, 70 tests
+contracts/   Solidity (Foundry): HufuVault, MockFXPool, MockStablecoin, deploy script, 94 tests
 agent/       Python: agent loop, tools, guard/, Huitong, chain client, FastAPI, red team, tests
 web/         Next.js 16 + shadcn/ui dashboard
 redteam/     scenarios.yaml: 40 attacks in 8 categories + 15 benign tasks
@@ -75,12 +76,21 @@ make doctor         # check everything is wired up
 
 Open http://localhost:3000, or chat in the terminal with `make cli`.
 
+**Passkey.** In the dashboard, "Set up passkey" creates one and stores its public key on the vault. Use `localhost`, not `127.0.0.1` (passkeys need a domain name). Any passkey works:
+- a phone: choose "use a phone or tablet" and scan the QR code;
+- Touch ID or Windows Hello;
+- a security key;
+- with no authenticator at all, Chrome DevTools' virtual one (More tools › WebAuthn).
+
+Approvals then ask for the passkey. "Lock owner key" makes it the only way to act as the student.
+
 ## Tests and evaluation
 
 ```bash
 make test               # Foundry tests + Python unit tests (offline)
 make test-integration   # on-chain integration tests on a private chain (+ model end-to-end tests)
 make redteam            # full red-team suite on a private chain (about 2–3 hours on one GPU)
+make e2e-passkey        # the passkey flow in Chrome with a virtual authenticator (no model needed)
 make evidence           # run the demo tasks through the guard and record every transaction
 ```
 
@@ -88,9 +98,10 @@ Quality checks (also run by [CI](.github/workflows/ci.yml) on every push, except
 
 | Check | Result |
 |---|---|
-| Contract tests (`forge test`) | 70 tests incl. fuzzing; `HufuVault` 100% lines, 98% branches (`forge coverage`) |
-| Contract static analysis | `forge lint` clean; Slither: no high or medium findings (9 low, all intentional and justified in the code) |
-| Agent | `ruff`, `mypy` clean; 51 unit and on-chain tests (`pytest -m "not llm"`) + 7 end-to-end tests with the model |
+| Contract tests (`forge test`) | 94 tests incl. fuzzing and 24 passkey tests; `HufuVault` 99% lines (the one uncounted line is inline assembly), 98% branches (`forge coverage --ir-minimum`) |
+| Contract static analysis | `forge lint` clean; Slither: no high or medium findings (10 low and 3 informational, all intentional and justified in the code) |
+| Passkey in a browser | `make e2e-passkey`: register, approve, lock the owner key, unfreeze and cancel in Google Chrome with a virtual WebAuthn authenticator |
+| Agent | `ruff`, `mypy` clean; 84 unit and on-chain tests (`pytest -m "not llm"`) + 9 end-to-end tests with the model |
 | Dashboard | `pnpm typecheck`, `pnpm lint`, `pnpm build`; `pnpm audit --prod` and `pip-audit`: no known vulnerabilities |
 | Red team | 40 attacks + 15 normal tasks × 4 configurations, judged on-chain ([results](docs/evidence/redteam/README.md)) |
 
@@ -118,7 +129,7 @@ Never reuse the public Anvil development keys on a public network.
 
 ## Honest limits
 
-The owner key sits on the same machine in this prototype (production: a passkey on the student's phone); remittance quotes are sample data; scam rules are English-language rules. The full list is in the [security self-assessment](docs/SECURITY_SELF_ASSESSMENT.md#4-known-risk-list).
+A passkey prompt cannot show what is being signed (the dashboard shows it first, but a fully compromised computer could lie); until the student registers a passkey and locks the owner key, that key sits on the same machine; remittance quotes are sample data; scam rules are English-language rules. The full list is in the [security self-assessment](docs/SECURITY_SELF_ASSESSMENT.md#4-known-risk-list).
 
 ## License
 

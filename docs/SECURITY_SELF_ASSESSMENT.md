@@ -17,8 +17,9 @@ Scope: the Hufu agent wallet as submitted (contracts, agent runtime, guard, dash
 | T7 | **Policy tampering** | "Raise my limit", "add this payee", "unfreeze" | Owner-only functions on-chain; no agent tool; guard blocks unrequested mandates |
 | T8 | **Audit tampering** | Editing the local log to hide a decision | Hash chain + on-chain anchoring of the head |
 | T9 | **Regulatory misuse** | Routing money to a jurisdiction where stablecoins are not permitted; paying a sanctioned address | Huitong jurisdiction rules; payments-only design (no trading); counterparty screening (BLOCK even on request); travel-rule-ready records of transfers of HK$8,000 or more ([COMPLIANCE.md](COMPLIANCE.md)) |
+| T10 | **Compromised computer** (the one running the agent) | Malware reads the owner key from `.env` and approves its own transfer | The student's half as a passkey on their own device, verified on-chain; the owner key locked so the file has no power; every passkey action needs the student's fingerprint, face or PIN and works once (§3.11) |
 
-Out of scope for this prototype: a compromised owner device (the owner key is the root of trust), malicious RPC providers, front-running/MEV, and attacks on Ollama or the host OS.
+Out of scope for this prototype: a compromised device holding the student's passkey (the passkey is then the root of trust), malicious RPC providers, front-running/MEV, and attacks on Ollama itself. A compromised computer running the agent is now in scope (T10); what it can still do is listed under R1.
 
 ## 2. Permission-tier implementation
 
@@ -26,14 +27,15 @@ Out of scope for this prototype: a compromised owner device (the owner key is th
 |---|---|---|---|---|
 | **T0 Read** | `get_wallet_status`, `list_payees`, `list_mandates`, `list_pending_approvals`, `get_history`, `read_inbox`, `quote_conversion`, `compare_remittance` | Always ALLOW; untrusted outputs (inbox) are scanned, labelled and recorded for taint (`guard/core.py::_label_untrusted`) | No key used | `test_guard.py::test_injected_payment_without_request_is_blocked` |
 | **T1 Act within mandate** | `pay` (saved payee), `pay_due_mandates`, `convert_currency`, `freeze_wallet` | Guard rules §4.2 of TECHNICAL.md: frozen, lookalike, taint, intent, limits | `HufuVault.pay` (allowlist, per-payee daily cap, per-payment cap, daily cap, expiry, not paused), `executeMandate` (exact amount, due, payee still allowed), `swap` (registered pool, counts toward the daily cap), `pause` (agent/guardian/owner) | `HufuVault.t.sol` (62 tests incl. fuzzing); `test_guard.py` |
-| **T2 Student approval** | `request_payment`, `propose_mandate`, `propose_new_payee`, plus every guard **ASK** | Guard files the request with reasons and ⚠ warnings; dashboard shows them; only the owner key executes (`approvals.py`) | `requestPayment` → `approveRequest` / `rejectRequest` (owner only, not while paused); `createMandate`, `setPayee` (owner only) | `test_RequestPayment_*`, `test_RevertWhen_AgentApprovesOwnRequest`, `test_student_insisting_on_scam_address_goes_to_approval_with_warning` |
+| **T2 Student approval** | `request_payment`, `propose_mandate`, `propose_new_payee`, plus every guard **ASK** | Guard files the request with reasons and ⚠ warnings; dashboard shows them and exactly what will be signed; only the student's half executes (`approvals.py` → `student.py`): the passkey once registered, otherwise the owner key | `requestPayment` → `approveRequest` / `rejectRequest` (owner only, not while paused); `createMandate`, `setPayee` (owner only); `executeWithPasskey` verifies the WebAuthn signature before any of them | `test_RequestPayment_*`, `test_RevertWhen_AgentApprovesOwnRequest`, `test_student_insisting_on_scam_address_goes_to_approval_with_warning`, `HufuVaultPasskey.t.sol` (24 tests), `test_passkey.py`, `make e2e-passkey` |
 | **T3 Forbidden** | Change limits, payees, payee caps, agent key/expiry, guardian, FX pool; withdraw; transfer ownership; unpause; arbitrary calls; token approvals | **No tool exists** (asserted by `test_units.py::test_tool_registry`) | All `onlyOwner`; agent calls revert `NotOwner` | `test_AgentCannotChangeAnyPolicy`, `test_RevertWhen_AgentOrGuardianUnpauses` |
 
 **Roles and keys**
 
 | Role | Key | Can | Cannot |
 |---|---|---|---|
-| Owner (student) | Owner key (demo: local owner signer; production: passkey on the phone) | Everything, including approve, set policy, unpause, withdraw | — |
+| Owner (student): passkey | WebAuthn P-256 key on the student's phone, laptop or security key; the vault stores only the public key | Everything the owner can, one signed action at a time (`executeWithPasskey`); lock or unlock the owner key | Anything without the student's fingerprint, face or PIN; reuse a signature; act on another vault or chain |
+| Owner (student): owner key | Owner key (in `.env` in the demo) | Until locked: everything, including approve, set policy, unpause, withdraw, register the passkey. Once locked: only `pause` | Once locked: approve, withdraw, change limits, change the passkey, unlock itself |
 | Agent | Session key with expiry (30 days in the demo) | `pay`, `requestPayment`, `executeMandate`, `swap`, `pause`, `anchorAudit` | Any policy change, approve its own requests, unpause, act after expiry or while paused |
 | Guardian (trusted contact) | Guardian key | `pause` only | Anything else |
 
@@ -41,7 +43,7 @@ Out of scope for this prototype: a compromised owner device (the owner key is th
 
 ## 3. Controls
 
-1. **Vault contract** (`HufuVault.sol`, Solidity 0.8.28, OpenZeppelin 5.4): checks-effects-interactions, `nonReentrant` on every token-moving function, `SafeERC20`, custom errors decoded into plain language. `forge lint` is clean; each suppressed lint has a justification next to it (zero-address allowed for revocation; timestamp comparisons with day-scale tolerances; a guarded call to the owner-set pool).
+1. **Vault contract** (`HufuVault.sol`, Solidity 0.8.28, OpenZeppelin 5.6): checks-effects-interactions, `nonReentrant` on every token-moving function, `SafeERC20`, custom errors decoded into plain language. `forge lint` is clean; each suppressed lint has a justification next to it (zero-address allowed for revocation; timestamp comparisons with day-scale tolerances; a guarded call to the owner-set pool).
 2. **Guard** (`guard/core.py`): decisions ALLOW / ASK / BLOCK with plain-language reasons; ASK files the request itself so escalation does not depend on the model.
 3. **Provenance / taint** (`guard/provenance.py`): recipient addresses and amounts that appear only in third-party content cannot authorise a payment.
 4. **Scanner** (`guard/scanner.py`): rule-based ratings for injection phrases, payment-change requests, urgency, unknown and lookalike addresses.
@@ -49,14 +51,15 @@ Out of scope for this prototype: a compromised owner device (the owner key is th
 6. **Kill switch:** freezing needs no approval (agent, guardian, owner); only the owner unfreezes; the guard blocks all money actions while frozen.
 7. **Audit:** hash-chained log; head anchored on-chain after each turn that moved money; tampering detected by `verify()`.
 8. **Privacy:** local model; memos hashed on-chain; no personal data sent to third parties.
-10. **Compliance:** counterparty screening against the project list and the OFAC SDN list (`compliance.py`), re-checked at approval and by the autopilot; travel-rule-ready records of transfers of HK$8,000 or more. Mapping to the regulations: [COMPLIANCE.md](COMPLIANCE.md).
 9. **Key hygiene:** public Anvil keys are used only on the local chain; `make testnet-keys` generates fresh keys for Sepolia (file mode 600, git-ignored); only the owner key needs faucet funds.
+10. **Compliance:** counterparty screening against the project list and the OFAC SDN list (`compliance.py`), re-checked at approval and by the autopilot; travel-rule-ready records of transfers of HK$8,000 or more. Mapping to the regulations: [COMPLIANCE.md](COMPLIANCE.md).
+11. **Passkey** (`executeWithPasskey`, `student.py`, `passkey.py`; TECHNICAL.md §4.12): the vault verifies each WebAuthn assertion on-chain with OpenZeppelin's `WebAuthn` library. It checks the `webauthn.get` type, the challenge, that the user was present and verified, and a low-s P-256 signature. The challenge binds the vault, chain, a single-use nonce, a 5-minute deadline and the exact call; the nonce is spent before the call runs. The owner key can only be locked by the passkey and never while no passkey works. The API checks the assertion off-chain first and gives a plain message for a wrong passkey, an expired challenge or a challenge meant for another action.
 
 ## 4. Known-risk list
 
 | # | Risk | Severity | Status / mitigation |
 |---|---|---|---|
-| R1 | Owner key lives on the same machine in the demo | High (prototype only) | Production: passkey/WebAuthn on the student's device; the approval API would only build the transaction for the phone to sign |
+| R1 | ~~The owner key lives on the same machine as the agent~~ | Low (was High) | **Mitigated.** The student registers a passkey and locks the owner key; from then on the vault accepts the student's half only as a WebAuthn signature from their device (§3.11). Residual risks: (a) until the student does this, the demo owner key is still on the machine; (b) a passkey prompt does not show what is being signed. The dashboard shows the exact call first, but a fully compromised computer could show one action and have another signed; each signature still needs the student's fingerprint, face or PIN, covers one action and expires in 5 minutes. A trusted display (the phone rendering the request) is the next step |
 | R2 | Agent session key compromise | Medium | Bounded by allowlist, caps and expiry; any role can pause; owner can rotate or revoke the key (`setAgent`; tested by `test_SetAgent_RotatesTheSessionKey`, `test_SetAgentToZero_RevokesTheAgent`) |
 | R3 | Daily caps use UTC-day buckets: up to 2× the cap can move across midnight | Low | Documented; a rolling 24 h window is a straightforward change |
 | R4 | ~~Per-payee caps were per payment, so several smaller payments to the same saved payee could exceed the intended amount~~ | Low | **Fixed.** Found by red-team scenario A23 in our first full run (the roommate received 2,000 against a 500 limit). The vault now tracks a daily total per payee (`paidToPayeeOnDay`), and the guard asks once the payee's daily limit is used. Tests: `test_RevertWhen_SplitPaymentsPassPayeeDailyCap`, `testFuzz_PayeeDailyCapHoldsAcrossSplits`, `test_splitting_past_the_payee_daily_limit_needs_approval` |
@@ -73,10 +76,12 @@ Out of scope for this prototype: a compromised owner device (the owner key is th
 | R15 | The autopilot acts without a student message | Low | It can only pay recurring payments the student signed on-chain, convert within the limits, and freeze; the guard's system run has no payment intent, so `pay` to anyone is not available. Every run is audited and anchored. It is off by default and the student switches it on |
 | R16 | The tripwire detects a stolen key after the fact | Medium | The first rogue payment still lands (inside the caps, to a saved payee); the wallet freezes on the next run (20 s by default) instead of after the daily caps are spent. Tripwire state is local: if the device is offline, detection waits until it is back |
 | R17 | Screening checks exact addresses only | Medium | The project list plus the OFAC SDN list's 0x addresses. No commercial blockchain analytics, so it can't tell whether an address is a step or two away from a listed one, and it does no screening of politically exposed people. A fresh address controlled by a listed person passes screening, but it still is not a saved payee, so it can only reach the student as an approval request |
+| R18 | Losing the passkey while the owner key is locked | Medium | Freezing and the agent's limited payments keep working, but nothing else can be changed. Synced passkeys (iCloud Keychain, Google Password Manager) survive losing one device; `removePasskey` is refused while the key is locked, so the vault never ends up with no owner at all; production would add guardian-assisted recovery behind a time lock |
 
 ## 5. Evidence
 
-- **Contracts:** `make test-contracts`: 70 tests, including fuzzing, key rotation and the jailbroken-agent loss bound; `HufuVault` 100% line and 98% branch coverage. Slither: no high or medium findings.
+- **Contracts:** `make test-contracts`: 94 tests, including fuzzing, key rotation, the jailbroken-agent loss bound and 24 passkey tests (replay, a swapped call, a changed deadline, another vault, the wrong key, no user verification, high-s, locking and recovery); `HufuVault` 99% line coverage (the one uncounted line is inline assembly) and 98% branch coverage. Slither: no high or medium findings.
+- **Passkey in a real browser:** `make e2e-passkey` drives the dashboard in Google Chrome with a virtual WebAuthn authenticator: register, approve a 6,000 HKD payment, lock the owner key (the vault then refuses it with `NotOwner`), freeze and unfreeze, and cancel a signature.
 - **Agent, guard, API:** `make test` and `make test-integration`: unit tests plus on-chain integration tests on a private chain for every guard rule, the approval flow, freezing, the audit chain and the API.
 - **Red team:** `make redteam`: 40 attacks in 8 categories and 15 benign tasks against four configurations, judged on-chain. Final run [`20261018-201351`](evidence/redteam/20261018-201351/summary.md):
 

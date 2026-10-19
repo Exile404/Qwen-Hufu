@@ -21,7 +21,7 @@ A *hufu* (虎符) is a bronze tiger split in two: the ruler keeps one half, the 
 |---|---|---|---|
 | **T0 Read** | Balances, limits, payees, recurring payments, history, inbox, remittance quotes | Agent | No key involved |
 | **T1 Act within mandate** | Pay a saved payee within per-payment, per-payee and daily limits; pay due recurring payments; convert currency within limits; **freeze** | Agent (commander's half) | Guard **and** vault contract |
-| **T2 Student approval** | New recipient; over-limit amount; new recurring payment; anything whose recipient or amount came from untrusted content | Student (ruler's half) | Guard files the request; vault `approveRequest` / owner-only functions |
+| **T2 Student approval** | New recipient; over-limit amount; new recurring payment; anything whose recipient or amount came from untrusted content | Student (ruler's half): a passkey on their own device, or the owner key | Guard files the request; vault `approveRequest` / owner-only functions, signed by the passkey and checked on-chain (§4.12) |
 | **T3 Forbidden** | Change limits, payees, agent key or expiry; arbitrary contract calls; token approvals; spending while frozen; unfreezing | Nobody via the agent | No tool exists; vault reverts |
 
 ## 3. Architecture
@@ -38,8 +38,9 @@ A *hufu* (虎符) is a bronze tiger split in two: the ruler keeps one half, the 
         │   │                    │ L5 decide ALLOW / ASK / BLOCK ─► audit log │──► hash chain (SQLite)
         │   │                    └──────────┬───────────────┬─────────────────┘        │ head anchored
         │   ▼                         ALLOW │               │ ASK                      ▼ on-chain
-        │  Owner signer ◄───────────────────┼───────────────┘                 HufuVault.anchorAudit
-        │  (student's half; passkey in prod) ▼
+        │  Student's half ◄─────────────────┼───────────────┘                 HufuVault.anchorAudit
+        │  passkey (WebAuthn) on the        ▼
+        │  student's device, checked on-chain; or the owner key
         │                         Executor (agent session key = commander's half)
         ▼                                    │
   ┌──────────────────────── HufuVault (Solidity) ─────────────────────────┐
@@ -62,9 +63,9 @@ After the model, every action crosses three independent checks: the **guard** (s
 | `agent/hufu/compliance.py`, `sanctions_update.py` | Counterparty screening (project list + OFAC SDN Ethereum addresses) and travel-rule-ready records of transfers of HK$8,000 or more |
 | `agent/hufu/autopilot.py`, `planner.py` | Autopilot (acts between conversations: tripwire, due payments, funding ahead, scam alerts) and the cash-flow planner |
 | `agent/hufu/guard/` | `core.py` decisions · `provenance.py` taint · `scanner.py` scam rules · `verifier.py` reply checks · `audit.py` hash chain |
-| `agent/hufu/approvals.py` | The student's half: approve / reject (owner key) |
+| `agent/hufu/approvals.py`, `student.py`, `passkey.py` | The student's half: approve / reject / unfreeze, signed by the student's passkey (WebAuthn, checked on-chain) or the owner key; assertion parsing and a software passkey for tests |
 | `agent/hufu/huitong.py` | Licensed remittance-route comparison with jurisdiction rules |
-| `agent/hufu/chain.py` | web3 client, three signers, revert decoding into plain language |
+| `agent/hufu/chain.py` | web3 client, signers and passkey relay, revert decoding into plain language |
 | `agent/hufu/api.py`, `web/` | FastAPI + Next.js dashboard |
 | `agent/hufu/redteam.py`, `redteam/scenarios.yaml` | Red-team suite (§6) |
 
@@ -77,6 +78,7 @@ After the model, every action crosses three independent checks: the **guard** (s
 - Mandates: the owner signs `{payee, token, amount, interval, nextDue, end}`. `executeMandate(id)` (agent) pays **exactly** `amount`, only when `block.timestamp ≥ nextDue`, only while the payee is still allowlisted, then advances `nextDue`. Revoking a payee kills its mandates.
 - `swap(tokenIn, amountIn, minOut)` (agent): only through the owner-registered pool; counts toward the daily cap so repeated conversions cannot drain value through fees.
 - `pause()` may be called by the agent, the guardian or the owner (the beacon-fire rule). `unpause()` is owner-only. The owner can always `withdraw`, even while paused.
+- `executeWithPasskey(call, validUntil, assertion)` (anyone may relay): runs one owner call signed by the student's passkey, verified on-chain (§4.12). Once the passkey locks the owner key (`ownerKeyRetired`), only the passkey can act as owner.
 - Every action emits an event; the dashboard history is rebuilt from events, so the chain is the source of truth.
 - Only `keccak256(memo)` goes on-chain; memo text stays on the device.
 
@@ -150,6 +152,30 @@ Two controls sit next to the guard (the full regulation mapping is in [COMPLIANC
 - **Counterparty screening.** Before Hufu pays an address, files a request for it or saves it as a payee, the guard checks it against the screening list: the project's entries plus every 0x address on the U.S. Treasury OFAC SDN list (`make sanctions-update`; 122 addresses as fetched on 19 Oct 2026). A hit is a BLOCK even when the student typed the address, because sanctions are not a matter of consent. The student's approval re-checks the address before signing, in case the list changed after the request was filed, and the autopilot re-screens saved payees.
 - **Transfer records.** Every transfer of HK$8,000 or more (Hong Kong's threshold for the fuller travel-rule data set) gets a record: originator, beneficiary, amount, HKD equivalent, purpose and transaction hash. It is kept on the device, never on-chain, so the student can answer a receiving institution's request.
 
+### 4.12 The student's half as a passkey (`executeWithPasskey`, `student.py`, `passkey.py`)
+
+In the first version the student's half was an owner key on the same computer as the agent (risk R1). Now it can be a **passkey**: a WebAuthn P-256 key held by the student's phone, laptop (Touch ID, Windows Hello) or security key, used with a fingerprint, face or PIN. The private key never leaves that device, and **the vault checks every signature on-chain** with OpenZeppelin's audited `WebAuthn` library. That library uses the P-256 precompile where the chain has it, as Sepolia and anvil do since the Osaka upgrade (EIP-7951), and a Solidity fallback elsewhere.
+
+1. **Register.** The dashboard creates a passkey (`navigator.credentials.create`, ES256, user verification required) and the owner key stores its public key on the vault (`setPasskey`). From then on, every action of the student's half asks for the passkey: approve, reject, add a payee, sign a recurring payment, unfreeze, and replace or remove the passkey.
+2. **Sign.** For each action the API builds the exact vault call and asks the vault for its challenge: `keccak256(domain, chainId, vault, nonce, validUntil, keccak256(call))`. The API answers HTTP 428 with that challenge. The dashboard shows the student what will be signed, and only after they confirm does it ask the passkey (`navigator.credentials.get`).
+3. **Relay and verify.** The API first checks the assertion off-chain, so a wrong passkey gets a clear message. The agent key then relays `executeWithPasskey(call, validUntil, assertion)` and pays the gas. The vault verifies the WebAuthn assertion:
+   - the type is `webauthn.get` and the challenge matches;
+   - the user was present and verified;
+   - the low-s P-256 signature comes from the registered key.
+
+   It spends the nonce, and only then calls itself with the signed call, passing the vault's own error through if that call fails. The relayer can neither change the call nor reuse the signature: it is bound to this vault, this chain, one nonce and a 5-minute deadline.
+4. **Lock the owner key.** Once the passkey has signed, the student can lock the owner key (`setOwnerKeyRetired`). The vault only accepts that from the passkey, so the key is never locked before the passkey has shown it works.
+   - The owner key then has no power left. A stolen key file cannot approve, withdraw, change limits or swap the passkey.
+   - It can still freeze, because stopping never needs the other half.
+   - The passkey can unlock the key again. `removePasskey` is refused while the key is locked, so the vault always keeps a working owner.
+
+How it is tested:
+- 24 Foundry tests: replay, a relayer swapping the signed call for a withdrawal, a changed deadline, another vault's signature, the wrong key, missing user presence or verification, high-s signatures, rotation, locking, and a fuzz test over every byte of the signed call.
+- 17 Python tests through the API on a private chain.
+- A run of the real dashboard in Google Chrome with a virtual WebAuthn authenticator (`scripts/passkey_e2e.py`: register, approve, lock, freeze and unfreeze, cancel).
+
+On Sepolia the evidence script signs with a software passkey that produces the same WebAuthn format (§7). A passkey-signed action costs about 80,000 gas with the precompile.
+
 **Reads on a public node.** Chain reads are cached per block (state only changes when a block is mined) and independent reads are sent as one JSON-RPC batch. On Sepolia this brought a dashboard refresh from 4–16 s to under 0.5 s per endpoint.
 
 Local state is tied to the deployment it belongs to: a fresh local chain redeploys the vault at the same address, so the store forgets that vault's approvals, alerts, audit and settings when the deployment underneath changes.
@@ -159,15 +185,21 @@ Local state is tied to the deployment it belongs to: a fresh local chain redeplo
 See [SECURITY_SELF_ASSESSMENT.md](SECURITY_SELF_ASSESSMENT.md) for the threat model, the permission-tier implementation and the known-risk list. Key properties:
 
 - **Defence in depth with independent failure modes:** the scanner is rules, provenance is string matching, the vault is code on-chain, and approval is a human. Compromising the model breaks none of them.
-- **Least privilege:** the agent key can only call `pay`, `requestPayment`, `executeMandate`, `swap`, `pause` and `anchorAudit`. It cannot change any rule.
+- **Least privilege:** the agent key can only call `pay`, `requestPayment`, `executeMandate`, `swap`, `pause` and `anchorAudit`. It cannot change any rule. It also relays the student's passkey signatures, but cannot alter or reuse them.
+- **The student's half off the computer:** with a passkey registered and the owner key locked, nothing stored on the computer running the agent can approve a payment, change a limit or unfreeze. That takes the student's fingerprint, face or PIN on their own device, once per action (§4.12).
 - **Bounded worst case:** with the agent key fully compromised, the loss per day is at most the daily caps, paid only to payees the student already trusts (tested in `test_JailbrokenAgent_LossBoundedByDailyCaps`). With the autopilot on, the tripwire freezes the wallet on its next run after the first payment Hufu did not make (`test_tripwire_freezes_when_the_agent_key_is_used_behind_hufus_back`).
 - **Privacy:** the model runs locally; memos stay off-chain (only hashes on-chain); the audit log stays on the device with only its head on-chain.
 
 ## 6. Evaluation
 
-- **Contracts:** 70 Foundry tests including fuzzing (daily cap never exceeded; per-payee daily cap holds across split payments), key rotation and the jailbroken-agent scenario. `HufuVault` coverage: 100% of lines, 98% of branches. Static analysis: `forge lint` clean; Slither reports no high or medium findings (9 low: zero addresses accepted on purpose to revoke a role, and day-scale timestamp comparisons).
+- **Contracts:** 94 Foundry tests, including:
+  - fuzzing: the daily cap is never exceeded, the per-payee daily cap holds across split payments, and changing any byte of a passkey-signed call fails;
+  - key rotation and the jailbroken-agent scenario;
+  - 24 passkey tests (§4.12).
+
+  `HufuVault` coverage: 99% of lines (the one line not counted is inline assembly) and 98% of branches (`forge coverage --ir-minimum`). Static analysis: `forge lint` is clean. Slither reports no high or medium findings: 10 low (zero addresses accepted on purpose to revoke a role; timestamp comparisons for day-scale schedules and the 5-minute passkey deadline) and 3 informational (the passkey self-call and its error pass-through; a mock's interface).
 - **Code quality:** `ruff` and `mypy` clean; CI (`.github/workflows/ci.yml`) runs the contract, agent and dashboard checks on every push; `pip-audit` and `pnpm audit --prod` report no known vulnerabilities.
-- **Agent and guard:** unit and on-chain integration tests for every guard rule, the API and the audit chain; end-to-end tests with the real model for benign tasks and attacks.
+- **Agent and guard:** 84 unit and on-chain integration tests for every guard rule, the API, the passkey flow and the audit chain; 9 end-to-end tests with the real model for benign tasks and attacks; `make e2e-passkey` runs the passkey flow in Google Chrome.
 - **Red team:** 40 attacks in 8 categories plus 15 benign tasks, each run against four configurations (A no guard and plain wallet, B guard only, C vault only, D full Hufu), judged on-chain. Results below; every run is in [evidence/redteam/](evidence/redteam/README.md).
 
 **Red-team results** (final run [`20261018-201351`](evidence/redteam/20261018-201351/summary.md), 220 runs, Qwen3.5 9B on one local GPU):
@@ -206,7 +238,9 @@ make redteam        # the full red-team suite on a private chain
 
 ## 8. Limitations and next steps
 
-- The owner key is held by a local "owner signer" in the demo; production would use a passkey (WebAuthn) on the student's phone.
+- **What the passkey cannot show.** A passkey prompt says which site is asking but not what is being signed; WebAuthn has no transaction display. The dashboard shows the exact call before the passkey is asked, but a fully compromised computer could show one action and have another signed. Each signature still needs the student's fingerprint, face or PIN, covers one action and expires in 5 minutes. The next step is a trusted display: the student's phone rendering the request itself.
+- **Recovery.** If the student loses every device holding the passkey while the owner key is locked, only freezing and the agent's limited payments keep working. Synced passkeys (iCloud Keychain, Google Password Manager) make this unlikely; production would add guardian-assisted recovery behind a time lock.
+- Until the student registers a passkey and locks the owner key, the demo owner key still sits on the same machine.
 - The vault is a purpose-built contract rather than an ERC-4337 smart account; porting the policy to account-abstraction session keys is straightforward.
 - The contracts are plain Solidity and portable to FISCO BCOS, WeBank's open consortium chain.
 - Scam intelligence is local rules. Sharing lookalike and scam-address signals across institutions without sharing customer data is a natural fit for federated learning (e.g. FATE).

@@ -31,7 +31,7 @@ The agent pays rent, tuition and bills in **test stablecoins (tHKD, tUSD)** from
 
 1. **Guard** (off-chain, before anything is signed): permission tiers, provenance/taint, scam and injection scanning.
 2. **HufuVault contract** (on-chain, final word): caps, payee allowlist, mandates, session-key expiry, pause.
-3. **Student approval** for anything risky, signed with the owner key.
+3. **Student approval** for anything risky, signed with a passkey on the student's own device and verified by the vault on-chain.
 
 **Persona:** Ayaan, a Bangladeshi master's student in **Hong Kong**. His family in Dhaka sends USD through a licensed remittance provider; it lands in HK and is held as a USD stablecoin. Rent, tuition and bills are paid in HKD.
 
@@ -65,7 +65,7 @@ Coinbase launched Agentic Wallets (Feb 2026) with session caps and per-transacti
 |---|---|---|---|
 | **T0 Read** | Balances, policy, payees, mandates, history, inbox, quotes, scam check | Agent, automatic | No signing key involved |
 | **T1 Act within mandate** | Pay a saved payee ≤ per-tx, per-payee and daily caps; execute a due mandate; swap ≤ cap via the registered FX pool; **pause** | Agent, automatic | Guard **and** vault |
-| **T2 Student approval** | New payee; over-cap amount; create/change a mandate; any payment whose payee or amount came from untrusted content; high scam score | Student approves in the dashboard (owner key signs) | Guard queues it; vault `approveRequest` / owner calls execute |
+| **T2 Student approval** | New payee; over-cap amount; create/change a mandate; any payment whose payee or amount came from untrusted content; high scam score | Student approves in the dashboard (their passkey signs; the vault verifies it on-chain) | Guard queues it; vault `approveRequest` / owner calls execute |
 | **T3 Forbidden** | Change caps/policy/agent key, arbitrary contract calls, token approvals, spending while paused or after session expiry, unpausing | Nobody via the agent: no tool exists | Vault reverts |
 
 ---
@@ -104,7 +104,7 @@ Coinbase launched Agentic Wallets (Feb 2026) with session caps and per-transacti
         │   ▼                    ALLOW │               │ ASK                ▼
         │  Owner signer ◄──────────────┼───────────────┘            HufuVault.anchorAudit()
         │  (student's half of the      ▼
-        │   tally; passkey in prod)  Executor (agent session key = commander's half)
+        │   tally; passkey)         Executor (agent session key = commander's half)
         ▼          │                   │
    ┌──────────────── HufuVault (Solidity) ─────────────────┐
    │ caps · payee allowlist · mandates · expiry · pause      │──► MockStablecoin tHKD / tUSD
@@ -123,7 +123,7 @@ Coinbase launched Agentic Wallets (Feb 2026) with session caps and per-transacti
 
 ## 5. Components
 
-### 5.1 Contracts (`contracts/`, Solidity 0.8.28, Foundry, OpenZeppelin 5.4)
+### 5.1 Contracts (`contracts/`, Solidity 0.8.28, Foundry, OpenZeppelin 5.6)
 - `MockStablecoin` — 6-decimal test tokens tHKD, tUSD. ✅
 - `MockFXPool` — fixed-rate tUSD⇄tHKD pool with a fee (sample rate 7.80 HKD/USD, owner-set).
 - `HufuVault` — one per student:
@@ -137,7 +137,7 @@ Coinbase launched Agentic Wallets (Feb 2026) with session caps and per-transacti
 
 ### 5.2 Agent (`agent/hufu/`, Python 3.12, FastAPI, web3.py, OpenAI-compatible client)
 - `llm.py` ✅ · `config.py` ✅ · `api.py` ✅ (health only so far)
-- `chain.py` contract bindings, executor (agent key), owner signer (owner key)
+- `chain.py` contract bindings, executor (agent key), owner signer (owner key) and passkey relay; `student.py`, `passkey.py` the student's half as a WebAuthn passkey
 - `tools.py` tool schemas + implementations (T0/T1/T2)
 - `guard/` ✅ `core.py` (ALLOW/ASK/BLOCK decisions), `provenance.py` (taint), `scanner.py` (scam/injection/address poisoning), `verifier.py` (numbers + tx hashes in replies), `audit.py` (hash chain, anchored on-chain)
 - `agent.py` loop: model → guard → execute/queue/refuse → model
@@ -170,13 +170,14 @@ Each phase was built, then tested by hand and by automated tests, and fixed befo
 | Phase | What was built | How it was verified |
 |---|---|---|
 | **P0 Scaffold** | Repo, toolchain, local model, smoke tests | `make doctor`, `make test` |
-| **P1 Contracts** | `HufuVault`, `MockFXPool`, test stablecoins, deploy and seed script | Foundry tests (now 70, including fuzzing); local deployment |
+| **P1 Contracts** | `HufuVault`, `MockFXPool`, test stablecoins, deploy and seed script | Foundry tests (now 94, including fuzzing); local deployment |
 | **P2 Agent core** | Chain client, tools, agent loop, CLI chat | The everyday tasks run end to end in the CLI |
 | **P3 Guard** | Tiers, taint, scanner, lookalike detection, reply verifier, hash-chained audit with on-chain anchoring, kill switch | Hand-run attacks plus integration tests for every rule |
 | **P4–P5 Dashboard and student features** | API, Next.js dashboard, approvals, Huitong, attack lab | Click-through of the full demo story |
 | **P6 Red team** | 40 attacks and 15 normal tasks against four configurations, judged on-chain | The first full run found a real gap (split payments passed the per-payee limit); fixed in the contract and re-run: full Hufu 0/40 ([results](evidence/redteam/README.md)) |
 | **P7 Testnet** | Ethereum Sepolia deployment and evidence capture | Every step's transaction on Etherscan; contracts source-verified |
 | **P8 Hardening** | Autopilot (tripwire, due payments, funding ahead, scam alerts), cash-flow planner, compliance controls (sanctions screening, transfer records), CI | Autopilot and compliance tests on a private chain; CI on every push |
+| **P9 Passkey** | The student's half as a WebAuthn passkey, verified on-chain (`executeWithPasskey`); owner key lockable; dashboard sign-and-confirm flow | 24 Foundry tests incl. fuzzing; API tests on a private chain; the dashboard in Google Chrome with a virtual authenticator (`make e2e-passkey`); passkey-signed transactions on Sepolia |
 
 ## 7. Stack decisions
 
@@ -184,10 +185,10 @@ Each phase was built, then tested by hand and by automated tests, and fixed befo
 |---|---|
 | Qwen3.5 9B via Ollama, local (`hufu-qwen`, 16K ctx), `reasoning_effort=low` | Phase 2 eval, 3 runs × 4 agent tasks: **12/12 with low vs 9/12 with thinking off** (off narrates actions instead of calling tools). Median 27 s per turn in the red-team run on one local GPU. Local = no personal data leaves the device. Any OpenAI-compatible API can be swapped in via `.env`. |
 | Anvil for dev, Ethereum Sepolia for evidence | Instant local loop; public explorer for judges. Plain Solidity, portable to FISCO BCOS (WeBank's chain) as a next step. |
-| Custom vault instead of a full ERC-4337 smart account | Small, fully tested (100% line coverage), easy to explain and to audit. |
+| Custom vault instead of a full ERC-4337 smart account | Small, fully tested (99% line coverage), easy to explain and to audit. |
 | Simple explicit agent loop (no framework) | Every step visible and logged, which the security report needs. The runtime nudges the model if it goes silent, claims an action it didn't take, or was asked to pay and didn't call a payment tool, and falls back to a factual summary of what ran. |
 | Deterministic money arithmetic in tools | The model decides *what*; code decides *how much*. E.g. `pay_due_mandates` converts exactly the tUSD needed. The 9B model invented conversion amounts when asked to do it itself. |
-| Owner key held by a local "owner signer" | Demo stand-in for the student's phone/passkey. Listed as a known risk. |
+| The student's half as a passkey (WebAuthn), checked on-chain with OpenZeppelin's `WebAuthn` library | Keeps the student's half off the computer running the agent; works with phones, Touch ID, Windows Hello and security keys without a wallet app; the P-256 precompile (EIP-7951) makes a signed action about 80,000 gas on Sepolia. The owner key bootstraps the vault and can then be locked. |
 
 ### Guard decision rules (as built)
 
