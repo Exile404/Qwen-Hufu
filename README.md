@@ -12,6 +12,7 @@ Hufu is an AI agent wallet for international students. It pays rent, tuition and
 |---|---|
 | Technical documentation | [docs/TECHNICAL.md](docs/TECHNICAL.md) |
 | Security self-assessment | [docs/SECURITY_SELF_ASSESSMENT.md](docs/SECURITY_SELF_ASSESSMENT.md) |
+| Compliance mapping | [docs/COMPLIANCE.md](docs/COMPLIANCE.md): HK, mainland China, Bangladesh and FATF rules mapped to Hufu's controls, with sources |
 | Red-team results | [docs/evidence/redteam/](docs/evidence/redteam/README.md): full Hufu stopped **40/40** attacks and completed 14/15 normal tasks |
 | On-chain evidence | [docs/evidence/onchain-11155111.md](docs/evidence/onchain-11155111.md): every demo step on Ethereum Sepolia with Etherscan links |
 | Build plan and decisions | [PLAN.md](PLAN.md) |
@@ -35,6 +36,7 @@ The Qin-era Du Tiger Tally (杜虎符) carries a rule: the commander may act alo
 - **Vault:** balances and how much of today's limit is left; a kill switch anyone with a role can pull.
 - **Huitong 汇通:** licensed Dhaka ⇄ Hong Kong routes ranked by what actually arrives; stablecoins are not offered for Bangladesh, with the reason shown.
 - **Autopilot:** acts between chats. It pays signed bills when due, converts currency ahead so the next week's bills are covered, flags scam emails, and freezes the wallet if the agent key moves money Hufu did not send. A 30-day cash-flow plan sits on the same card.
+- **Compliance:** every new recipient is screened against a sanctions list (blocked even if you insist); transfers of HK$8,000 or more get a travel-rule-ready record on the device.
 - **Attack lab:** plant a phishing email, switch the guard off, "send it anyway" as a jailbroken agent (the vault reverts it on-chain), or use a "stolen" agent key behind Hufu's back and watch the autopilot's tripwire freeze the wallet.
 
 ## Layout
