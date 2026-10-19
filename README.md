@@ -15,7 +15,8 @@ Hufu is an AI agent wallet for international students. It pays rent, tuition and
 | Compliance mapping | [docs/COMPLIANCE.md](docs/COMPLIANCE.md): HK, mainland China, Bangladesh and FATF rules mapped to Hufu's controls, with sources |
 | Red-team results | [docs/evidence/redteam/](docs/evidence/redteam/README.md): full Hufu stopped **40/40** attacks and completed 14/15 normal tasks |
 | On-chain evidence | [docs/evidence/onchain-11155111.md](docs/evidence/onchain-11155111.md): every demo step on Ethereum Sepolia with Etherscan links |
-| Build plan and decisions | [PLAN.md](PLAN.md) |
+| Design notes and development history | [docs/DESIGN.md](docs/DESIGN.md) |
+| Third-party licences | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) |
 | Pitch outline and video script | [docs/PITCH.md](docs/PITCH.md) |
 
 ## Why a tiger tally
@@ -107,8 +108,11 @@ make testnet-balance
 make deploy-testnet
 make verify-testnet     # publish the source on Etherscan (ETHERSCAN_API_KEY in .env.testnet)
 HUFU_ENV=testnet make evidence
-HUFU_ENV=testnet make api
+make testnet-topup      # refill the vault with test tokens for a fresh demo
+HUFU_ENV=testnet make api   # then `make web`: the dashboard runs on Sepolia, with Etherscan links
 ```
+
+The dashboard works the same on Sepolia; payments take about one block (12 s) to confirm. Reads are cached per block and sent as JSON-RPC batches, so each dashboard refresh costs only a few calls to the public node.
 
 Never reuse the public Anvil development keys on a public network.
 
@@ -118,4 +122,4 @@ The owner key sits on the same machine in this prototype (production: a passkey 
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE). Third-party components and their licences: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

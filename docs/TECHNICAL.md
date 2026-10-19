@@ -150,6 +150,8 @@ Two controls sit next to the guard (the full regulation mapping is in [COMPLIANC
 - **Counterparty screening.** Before Hufu pays an address, files a request for it or saves it as a payee, the guard checks it against the screening list: the project's entries plus every 0x address on the U.S. Treasury OFAC SDN list (`make sanctions-update`; 122 addresses as fetched on 19 Oct 2026). A hit is a BLOCK even when the student typed the address, because sanctions are not a matter of consent. The student's approval re-checks the address before signing, in case the list changed after the request was filed, and the autopilot re-screens saved payees.
 - **Transfer records.** Every transfer of HK$8,000 or more (Hong Kong's threshold for the fuller travel-rule data set) gets a record: originator, beneficiary, amount, HKD equivalent, purpose and transaction hash. It is kept on the device, never on-chain, so the student can answer a receiving institution's request.
 
+**Reads on a public node.** Chain reads are cached per block (state only changes when a block is mined) and independent reads are sent as one JSON-RPC batch. On Sepolia this brought a dashboard refresh from 4–16 s to under 0.5 s per endpoint.
+
 Local state is tied to the deployment it belongs to: a fresh local chain redeploys the vault at the same address, so the store forgets that vault's approvals, alerts, audit and settings when the deployment underneath changes.
 
 ## 5. Security design

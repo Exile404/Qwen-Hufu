@@ -4,7 +4,7 @@
   ASK    don't run it; file it for the student's approval instead (T2), with the reasons attached
   BLOCK  refuse, and tell the model why so it can explain to the student
 
-Layers (see PLAN.md §4): L1 schema, L2 policy mirror, L3 provenance/taint, L4 scam scanner,
+Layers (see docs/DESIGN.md §4): L1 schema, L2 policy mirror, L3 provenance/taint, L4 scam scanner,
 L5 decision + hash-chained audit. The vault contract still enforces the limits after this; the guard
 exists to stop the payments that are *within* the limits but wrong (a scammer, a lookalike address,
 an action nobody asked for) and to explain decisions in plain words.

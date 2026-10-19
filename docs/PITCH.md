@@ -30,4 +30,6 @@ Red-team numbers are from the final run `docs/evidence/redteam/20261018-201351/s
 | 4:20–4:50 | Results | Red-team table | "Forty attacks, four configurations, judged on-chain. Guard only missed one, vault only missed a different one; together, none." |
 | 4:50–5:00 | Close | Seal logo | "Hufu. A tiger tally for your AI." |
 
+Images: use a properly licensed photo of the Du Tiger Tally (for example a Wikimedia Commons file whose licence allows reuse) and credit it on the slide, as the competition's IP rules require.
+
 Recording tips: run the local model before recording so it is warm; keep the dashboard at 1440 px wide; use the suggestion buttons so prompts are exact; cut waiting time in editing.

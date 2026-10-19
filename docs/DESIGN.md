@@ -1,11 +1,9 @@
-# Hufu (虎符) — Build Plan
+# Hufu (虎符) — Design notes and development history
 
 **FinTechathon 2026, International Track. Topic F (Agent Wallet), with Topic C (cross-border student finance) as the demo story.**
 
 > **A tiger tally for your AI.**
 > The agent pays on its own within what the student signed. Anything bigger needs the student's half of the tally. Freezing never needs permission.
-
-Deadline: **20 Oct 2026, 23:59 Beijing = 21 Oct 02:59 Melbourne.** Updates are allowed until then; the latest submission counts.
 
 ---
 
@@ -46,18 +44,18 @@ Coinbase launched Agentic Wallets (Feb 2026) with session caps and per-transacti
 | Others | Hufu |
 |---|---|
 | Caps stop *how much* | Taint tracking + scam shield stop *paying the wrong person* even within the cap |
-| Policy as config | Tiers that mirror China's 2026 NFRA guidance treating fund transfers as high-risk (human oversight + emergency stop) |
+| Policy as config | Tiers that match the NFRA's 2026 guidance on high-risk AI in financial transactions: human oversight, emergency stop, manual fallback ([COMPLIANCE.md](COMPLIANCE.md)) |
 | Claims | Measured red-team results with and without each layer |
 | Generic agent | A real student workflow: rent, tuition, remittances, FX |
 
-### How this maps to the score
+### How it maps to the judging criteria
 
-| Criterion | Weight | How we win it |
+| Criterion | Weight | What Hufu shows |
 |---|---|---|
-| Task completion | 40% | 11 tasks end to end, each with a tx hash or a logged refusal (§3) |
-| Security & compliance | 30% | 4 tiers enforced on-chain, taint tracking, kill switch, hash-chained audit anchored on-chain, red-team numbers per layer (§5.4) |
+| Task completion | 40% | The tasks in §3 end to end, each with a transaction hash or a logged refusal, plus the autopilot (pays due bills, funds them ahead, watches the inbox); 14/15 normal tasks in the final red-team run; every demo step on Ethereum Sepolia ([evidence](evidence/onchain-11155111.md)) |
+| Security & compliance | 30% | Four tiers enforced in code and on-chain, taint tracking, kill switch, stolen-key tripwire, hash-chained audit anchored on-chain, sanctions screening, travel-rule-ready records; red team: full Hufu stopped 40/40 attacks (§5.4) |
 | Innovation & interaction | 30% | Tiger-tally design; live jailbreak where the contract still says no; scam shield; Huitong remittance comparison |
-| On-chain bonus | 0–5 | Testnet tx hashes, including a reverted over-cap transfer |
+| On-chain bonus | 0–5 | Source-verified contracts on Sepolia; every step's transaction hash, including the jailbroken agent's transfer that the vault reverted |
 
 ---
 
@@ -165,32 +163,28 @@ Metrics: attack success rate (funds reached attacker, judged on-chain), funds lo
 
 ---
 
-## 6. Phases — build, test, fix, then move on
+## 6. Development history
 
-| Phase | Build | Test | Done when |
-|---|---|---|---|
-| **P0 Scaffold** | Repo, toolchain, local model, smoke tests, status page | `make doctor`, `make test`, status page green | ✅ |
-| **P1 Contracts** ✅ | `MockFXPool`, `HufuVault`, 70 Foundry tests, deploy + seed script | `make test-contracts`; `make deploy-local`; `make show-local` | Tests pass, local deployment seeded |
-| **P2 Agent core** ✅ | `chain.py`, `tools.py`, `agent.py`, CLI chat (`make cli`) — no guard yet | Run tasks 1–6 in the CLI | 6 tasks work |
-| **P3 Guard** ✅ | Tiers, taint, scanner, address poisoning, verifier, audit chain + anchoring, kill switch | Tasks 7–9; try to trick it yourself | Attacks blocked, benign tasks still pass |
-| **P4 API + dashboard** ✅ (pending your test) | Endpoints + full UI | Click through all 11 tasks | Full demo flow in the UI |
-| **P5 Student features** ✅ Huitong, attack lab (folded into P4) | Huitong comparison card, budget insight, scam-shield UX, attack lab | Demo story run-through | Story is smooth |
-| **P6 Red team** | Attack corpus, runner, 4 configs, report | `make redteam`; review report | Numbers in `docs/evidence/` |
-| **P7 Testnet** | Ethereum Sepolia deploy, evidence capture | **You:** fund 2 test keys from a faucet (I can't create faucet accounts) | Hashes on explorer |
-| **P8 Submission** (19 Oct) | Technical doc, security self-assessment, README, deck outline, video script | Record video, polish deck | **Draft submitted 19 Oct** |
-| **Buffer** (20 Oct) | Fixes | Final submit by evening (Melbourne) | Submitted |
+Each phase was built, then tested by hand and by automated tests, and fixed before the next one started.
 
-Target: **P1–P7 on 18 Oct.**
-
----
+| Phase | What was built | How it was verified |
+|---|---|---|
+| **P0 Scaffold** | Repo, toolchain, local model, smoke tests | `make doctor`, `make test` |
+| **P1 Contracts** | `HufuVault`, `MockFXPool`, test stablecoins, deploy and seed script | Foundry tests (now 70, including fuzzing); local deployment |
+| **P2 Agent core** | Chain client, tools, agent loop, CLI chat | The everyday tasks run end to end in the CLI |
+| **P3 Guard** | Tiers, taint, scanner, lookalike detection, reply verifier, hash-chained audit with on-chain anchoring, kill switch | Hand-run attacks plus integration tests for every rule |
+| **P4–P5 Dashboard and student features** | API, Next.js dashboard, approvals, Huitong, attack lab | Click-through of the full demo story |
+| **P6 Red team** | 40 attacks and 15 normal tasks against four configurations, judged on-chain | The first full run found a real gap (split payments passed the per-payee limit); fixed in the contract and re-run: full Hufu 0/40 ([results](evidence/redteam/README.md)) |
+| **P7 Testnet** | Ethereum Sepolia deployment and evidence capture | Every step's transaction on Etherscan; contracts source-verified |
+| **P8 Hardening** | Autopilot (tripwire, due payments, funding ahead, scam alerts), cash-flow planner, compliance controls (sanctions screening, transfer records), CI | Autopilot and compliance tests on a private chain; CI on every push |
 
 ## 7. Stack decisions
 
 | Choice | Why |
 |---|---|
-| Qwen3.5 9B via Ollama, local (`hufu-qwen`, 16K ctx), `reasoning_effort=low` | Phase 2 eval, 3 runs × 4 agent tasks: **12/12 with low vs 9/12 with thinking off** (off narrates actions instead of calling tools). ~6–9 s per turn. Local = no personal data leaves the device. Any OpenAI-compatible API can be swapped in via `.env`. |
-| Anvil for dev, Ethereum Sepolia for evidence | Instant local loop; public explorer for judges. Plain Solidity, portable to FISCO BCOS (WeBank's chain) — mentioned, deployed there only if time remains. |
-| Custom vault instead of a full ERC-4337 smart account | Small, fully tested, easy to explain and defend in one day. |
+| Qwen3.5 9B via Ollama, local (`hufu-qwen`, 16K ctx), `reasoning_effort=low` | Phase 2 eval, 3 runs × 4 agent tasks: **12/12 with low vs 9/12 with thinking off** (off narrates actions instead of calling tools). Median 27 s per turn in the red-team run on one local GPU. Local = no personal data leaves the device. Any OpenAI-compatible API can be swapped in via `.env`. |
+| Anvil for dev, Ethereum Sepolia for evidence | Instant local loop; public explorer for judges. Plain Solidity, portable to FISCO BCOS (WeBank's chain) as a next step. |
+| Custom vault instead of a full ERC-4337 smart account | Small, fully tested (100% line coverage), easy to explain and to audit. |
 | Simple explicit agent loop (no framework) | Every step visible and logged, which the security report needs. The runtime nudges the model if it goes silent, claims an action it didn't take, or was asked to pay and didn't call a payment tool, and falls back to a factual summary of what ran. |
 | Deterministic money arithmetic in tools | The model decides *what*; code decides *how much*. E.g. `pay_due_mandates` converts exactly the tUSD needed. The 9B model invented conversion amounts when asked to do it itself. |
 | Owner key held by a local "owner signer" | Demo stand-in for the student's phone/passkey. Listed as a known risk. |
@@ -201,6 +195,7 @@ Target: **P1–P7 on 18 Oct.**
 |---|---|
 | Read-only tool, or freezing the wallet | ALLOW |
 | Wallet frozen, any money action | BLOCK |
+| Recipient on the screening list (OFAC SDN or the project's list) | BLOCK, even if the student typed it |
 | Recipient is a lookalike of a saved payee and the student didn't type it | BLOCK (address poisoning) |
 | Recipient address seen only in third-party content, student didn't ask to pay | BLOCK |
 | …student did ask, but the source is rated high-risk by the scanner | BLOCK |
@@ -211,22 +206,8 @@ Target: **P1–P7 on 18 Oct.**
 | Recurring-payment proposal the student didn't ask for | BLOCK |
 | Everything else | ALLOW; the vault still enforces caps |
 
-Every reply is checked by the verifier (numbers and tx hashes must come from tool results or the student); one rewrite is requested, then remaining problems are shown to the student. Every turn that moved money anchors the audit head on-chain.
+Every reply is checked by the verifier (numbers and tx hashes must come from tool results or the student); one rewrite is requested, and if problems remain the reply is replaced by a factual summary of what actually ran. Every turn that moved money anchors the audit head on-chain.
 
-## 8. Known risks (seed for the security self-assessment)
+## 8. Known risks
 
-- Owner key on the same machine in the demo (prod: passkey/WebAuthn on the student's device).
-- Agent session key compromise → bounded by caps, allowlist and expiry; anyone with a role can pause.
-- Daily caps use UTC-day buckets: up to 2× the daily cap can move across a midnight boundary.
-- Mandate payments are owner-signed and do not count toward the daily cap.
-- Local 9B model is weaker at resisting manipulation → by design the guard and contract do not rely on it.
-- Sample remittance quotes and FX rate, not live provider data.
-- Testnet only; mock stablecoins have no value.
-- Taint tracking is string-based (normalised matches), so paraphrased or encoded payees can evade it → caught by the allowlist and T2 instead.
-- Payment intent is a keyword check on the student's message; a benign message containing "pay" makes the guard less strict for that turn (the vault and the high-risk-source rule still apply).
-- The scanner is rule-based: novel scam wording can rate "low"; address checks (allowlist, lookalike, provenance) do not depend on wording.
-- The verifier checks numbers and hashes, not meaning: a reply can still misattribute a correct number (seen in testing: a conversion credited to the wrong bill).
-
-## 9. Still open
-
-- Team + registration before the deadline.
+The maintained list (R1–R17, with severity and mitigation) is in [SECURITY_SELF_ASSESSMENT.md §4](SECURITY_SELF_ASSESSMENT.md#4-known-risk-list).
