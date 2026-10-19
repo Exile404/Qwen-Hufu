@@ -28,5 +28,6 @@ web/.next/
 web/next-env.d.ts
 
 # misc
+scripts/e2e-shots/
 .DS_Store
 *.log

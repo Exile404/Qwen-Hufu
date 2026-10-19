@@ -4,7 +4,7 @@ export PATH := $(HOME)/.foundry/bin:$(PATH)
 OZ_VERSION := v5.6.1
 FORGE_STD_VERSION := v1.17.0
 
-.PHONY: help setup model doctor chain chain-reset deploy-local show-local testnet-keys testnet-balance deploy-testnet verify-testnet testnet-topup sanctions-update api web cli redteam evidence test test-contracts test-agent test-integration fmt
+.PHONY: help setup model doctor chain chain-reset deploy-local show-local testnet-keys testnet-balance deploy-testnet verify-testnet testnet-topup sanctions-update api web cli redteam e2e-passkey evidence test test-contracts test-agent test-integration fmt
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -94,6 +94,9 @@ cli: ## Chat with the agent in the terminal (needs chain, deployment, model)
 
 redteam: ## Run the red-team suite (private chain + local model; ~1 h for everything). ARGS="--configs D --only A01"
 	cd agent && uv run python -m hufu.redteam $(ARGS)
+
+e2e-passkey: ## Browser test of the passkey flow in Chrome with a virtual authenticator (no model needed)
+	cd agent && uv run --with playwright==1.55.0 python ../scripts/passkey_e2e.py
 
 evidence: ## Run the demo tasks through the guard and record every tx (HUFU_ENV=testnet for Sepolia)
 	cd agent && uv run python -m hufu.evidence
