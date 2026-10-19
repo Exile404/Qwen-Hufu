@@ -6,13 +6,16 @@ Signers mirror the tiger tally:
   guardian = a trusted contact who can only pause
 """
 
+import copy
+import functools
 import json
 import math
 import re
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from eth_abi import decode as abi_decode
 from eth_account import Account
@@ -112,6 +115,33 @@ class TxResult:
         return {k: v for k, v in asdict(self).items() if v is not None}
 
 
+def per_block[F: Callable[..., Any]](fn: F) -> F:
+    """Cache a read for the current block. State only changes when a block is mined, and a public RPC
+    node is slow: without this, every dashboard refresh repeats dozens of calls on Sepolia."""
+
+    @functools.wraps(fn)
+    def wrapper(self: "Chain", *args: Any, **kwargs: Any) -> Any:
+        key = (fn.__name__, args, tuple(sorted(kwargs.items())))
+        block = self.w3.eth.block_number
+        hit = self._block_cache.get(key)
+        if hit is None or hit[0] != block:
+            hit = self._block_cache[key] = (block, fn(self, *args, **kwargs))
+        return copy.deepcopy(hit[1])
+
+    return cast(F, wrapper)
+
+
+def _batch(w3: Web3, calls: list[Any]) -> list[Any]:
+    """Send independent reads as one JSON-RPC batch: one round trip instead of one per call.
+    Items are contract function calls, or zero-argument callables for `w3.eth` reads."""
+    if not calls:
+        return []
+    with w3.batch_requests() as batch:
+        for c in calls:
+            batch.add(c if hasattr(c, "call") else c())
+        return list(batch.execute())
+
+
 class ChainNotDeployed(RuntimeError):
     """The deployment file points at contracts that are not on the running chain."""
 
@@ -139,6 +169,7 @@ class Chain:
         self._symbol_by_addr = {c.address.lower(): sym for sym, c in self.tokens.items()}
         self._seed_names: dict[str, str] = {to_checksum_address(a): n for n, a in d["payees"].items()}
         self._errors = _error_table(abis.values())
+        self._block_cache: dict[Any, tuple[int, Any]] = {}
 
         self.agent: LocalAccount = Account.from_key(s.agent_private_key)
         self.owner: LocalAccount = Account.from_key(s.owner_private_key)
@@ -168,33 +199,37 @@ class Chain:
 
     # ------------------------------------------------------------------ reads
 
+    @per_block
     def payees(self) -> list[dict[str, Any]]:
         """Current allowlist, rebuilt from PayeeSet events (the chain is the source of truth)."""
         latest: dict[str, dict[str, Any]] = {}
         for ev in self.vault.events.PayeeSet().get_logs(from_block=self.deployment["deployBlock"]):
             payee = to_checksum_address(ev["args"]["payee"])
             latest[payee] = {"allowed": ev["args"]["allowed"], "label": ev["args"]["label"]}
-        out = []
-        day = self.vault.functions.today().call()
-        for addr, p in latest.items():
-            caps, left = {}, {}
-            for sym in SYMBOLS:
-                token = self.tokens[sym].address
-                if cap := self.vault.functions.payeeCap(addr, token).call():
-                    paid = self.vault.functions.paidToPayeeOnDay(addr, token, day).call()
-                    caps[sym], left[sym] = from_units(cap), from_units(max(cap - paid, 0))
-            name = self._seed_names.get(addr) or _slug(p["label"])
-            out.append(
-                {
-                    "name": name,
-                    "address": addr,
-                    "label": p["label"],
-                    "allowed": p["allowed"],
-                    "caps": caps,  # daily limit per payee
-                    "left_today": left,
-                }
-            )
-        return out
+        v = self.vault.functions
+        pairs = [(addr, sym) for addr in latest for sym in SYMBOLS]
+        day, *cap_list = _batch(
+            self.w3, [v.today()] + [v.payeeCap(a, self.tokens[sym].address) for a, sym in pairs]
+        )
+        capped = [(pair, cap) for pair, cap in zip(pairs, cap_list, strict=True) if cap]
+        paid = _batch(
+            self.w3, [v.paidToPayeeOnDay(a, self.tokens[sym].address, day) for (a, sym), _ in capped]
+        )
+        caps: dict[str, dict[str, float]] = {a: {} for a in latest}
+        left: dict[str, dict[str, float]] = {a: {} for a in latest}
+        for ((addr, sym), cap), spent in zip(capped, paid, strict=True):
+            caps[addr][sym], left[addr][sym] = from_units(cap), from_units(max(cap - spent, 0))
+        return [
+            {
+                "name": self._seed_names.get(addr) or _slug(p["label"]),
+                "address": addr,
+                "label": p["label"],
+                "allowed": p["allowed"],
+                "caps": caps[addr],  # daily limit per payee
+                "left_today": left[addr],
+            }
+            for addr, p in latest.items()
+        ]
 
     def resolve_payee(self, ref: str) -> dict[str, Any]:
         """A saved payee by name/label, or a raw 0x address (which may not be allowed)."""
@@ -218,34 +253,55 @@ class Chain:
                 return p
         raise ValueError(f"no saved payee called {ref!r}")
 
+    @per_block
     def status(self) -> dict[str, Any]:
         v = self.vault.functions
+        toks = list(self.tokens.items())
+        per_token = [
+            call
+            for _, c in toks
+            for call in (
+                v.tokenPolicy(c.address),
+                c.functions.balanceOf(self.vault.address),
+                v.remainingToday(c.address),
+            )
+        ]
+        paused, active, expiry, block, *rest = _batch(
+            self.w3,
+            [
+                v.paused(),
+                v.agentActive(),
+                v.agentExpiry(),
+                lambda: self.w3.eth.get_block("latest"),
+                *per_token,
+            ],
+        )
         tokens = {}
-        for sym, c in self.tokens.items():
-            enabled, per_tx, daily = v.tokenPolicy(c.address).call()
+        for i, (sym, _) in enumerate(toks):
+            (enabled, per_tx, daily), balance, left = rest[3 * i : 3 * i + 3]
             tokens[sym] = {
-                "balance": from_units(c.functions.balanceOf(self.vault.address).call()),
+                "balance": from_units(balance),
                 "per_payment_limit": from_units(per_tx),
                 "daily_limit": from_units(daily),
-                "left_today": from_units(v.remainingToday(c.address).call()),
+                "left_today": from_units(left),
                 "enabled": enabled,
             }
         return {
             "tokens": tokens,
-            "frozen": v.paused().call(),
-            "agent_active": v.agentActive().call(),
-            "agent_session_expires": _iso(v.agentExpiry().call()),
-            "chain_time": _iso(self.now()),
+            "frozen": paused,
+            "agent_active": active,
+            "agent_session_expires": _iso(expiry),
+            "chain_time": _iso(block["timestamp"]),
         }
 
+    @per_block
     def mandates(self) -> list[dict[str, Any]]:
         names = {p["address"]: p["name"] for p in self.payees()}
         now = self.now()
         out = []
-        for i in range(self.vault.functions.mandateCount().call()):
-            payee, token, amount, interval, next_due, end, active, label = self.vault.functions.getMandate(
-                i
-            ).call()
+        for i, (payee, token, amount, interval, next_due, end, active, label) in enumerate(
+            self._mandate_rows()
+        ):
             ended = end != 0 and next_due > end
             out.append(
                 {
@@ -263,28 +319,32 @@ class Chain:
             )
         return out
 
+    @per_block
     def mandate_schedule(self) -> list[dict[str, Any]]:
         """The active recurring payments with raw unix times, for planning ahead."""
         names = {p["address"]: p["name"] for p in self.payees()}
-        out = []
-        for i in range(self.vault.functions.mandateCount().call()):
-            payee, token, amount, interval, next_due, end, active, label = self.vault.functions.getMandate(
-                i
-            ).call()
-            if active:
-                out.append(
-                    {
-                        "id": i,
-                        "label": label,
-                        "payee": names.get(to_checksum_address(payee), payee),
-                        "token": self.symbol(token),
-                        "amount": from_units(amount),
-                        "interval": interval,
-                        "next_due": next_due,
-                        "end": end,
-                    }
-                )
-        return out
+        return [
+            {
+                "id": i,
+                "label": label,
+                "payee": names.get(to_checksum_address(payee), payee),
+                "token": self.symbol(token),
+                "amount": from_units(amount),
+                "interval": interval,
+                "next_due": next_due,
+                "end": end,
+            }
+            for i, (payee, token, amount, interval, next_due, end, active, label) in enumerate(
+                self._mandate_rows()
+            )
+            if active
+        ]
+
+    @per_block
+    def _mandate_rows(self) -> list[tuple[Any, ...]]:
+        v = self.vault.functions
+        count = v.mandateCount().call()
+        return [tuple(m) for m in _batch(self.w3, [v.getMandate(i) for i in range(count)])]
 
     def deployment_marker(self) -> str:
         """Identifies this deployment even when a fresh chain reuses the same vault address."""
@@ -352,6 +412,7 @@ class Chain:
             )
         return out
 
+    @per_block
     def history(self, limit: int = 10, memo_lookup: Any = None) -> list[dict[str, Any]]:
         """Recent vault activity, newest first, from events."""
         names = {p["address"]: p["name"] for p in self.payees()}
