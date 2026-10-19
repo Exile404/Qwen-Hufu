@@ -1,0 +1,41 @@
+[project]
+name = "hufu"
+version = "0.1.0"
+description = "Hufu: an AI agent wallet whose permissions are enforced on-chain, like a tiger tally"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "web3>=7.6",
+    "openai>=1.60",
+    "pydantic-settings>=2.6",
+    "httpx>=0.28",
+    "pyyaml>=6.0",
+    "rich>=13.9",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "pytest-cov>=6.0", "ruff>=0.8", "mypy>=1.13", "types-pyyaml>=6.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["hufu"]
+
+[tool.ruff]
+line-length = 110
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: deploys to a private anvil chain started by the tests (needs Foundry)",
+    "llm: needs the local model (Ollama) running; the health check also needs `make chain`",
+]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["hufu"]
+ignore_missing_imports = true
+warn_unused_ignores = true

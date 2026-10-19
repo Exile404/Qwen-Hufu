@@ -1,0 +1,5 @@
+# Local agent model: Qwen3.5 9B with a context window big enough for tools + history.
+# Build with: make model
+FROM qwen3.5:9b
+PARAMETER num_ctx 16384
+PARAMETER temperature 0.2

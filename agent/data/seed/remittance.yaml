@@ -1,0 +1,93 @@
+# Huitong (汇通) sample data. Illustrative numbers for the demo: NOT live prices, NOT advice.
+# Route types are generic; no real provider's fees are claimed here.
+as_of: "2026-10-15"
+disclaimer: "Sample, illustrative quotes for the demo. Not live prices, not financial or legal advice."
+
+# Mid-market reference rates, units per 1 USD (sample).
+mid_per_usd: {USD: 1.0, HKD: 7.80, BDT: 122.0}
+
+# Can a stablecoin be used at each end? Plain-language reason shown to the student.
+jurisdictions:
+  HK:
+    name: Hong Kong
+    stablecoin: allowed
+    note: "Hong Kong licenses fiat-referenced stablecoin issuers under its Stablecoins Ordinance."
+  BD:
+    name: Bangladesh
+    stablecoin: not_permitted
+    note: "Bangladesh Bank has warned that crypto-asset transactions are not authorised in Bangladesh. Use a bank or licensed remittance channel."
+  CN:
+    name: Mainland China
+    stablecoin: not_permitted
+    note: "Mainland China prohibits crypto-asset trading and related services."
+
+corridors:
+  # Family in Dhaka -> Ayaan in Hong Kong (tuition and living costs)
+  family_to_me:
+    from: BD
+    to: HK
+    pay_currency: BDT
+    receive_currency: HKD
+    routes:
+      - name: "Bank wire from an authorised dealer bank (student file)"
+        rail: bank
+        licensed: true
+        fixed_fee: {amount: 1500, currency: BDT}
+        receiving_fee: {amount: 100, currency: HKD}
+        fx_margin_pct: 1.8
+        speed: "2-4 business days"
+        note: "Needs a student file at an authorised dealer bank (admission letter, passport, fee schedule)."
+      - name: "Pay the university directly from the student file"
+        rail: bank
+        licensed: true
+        fixed_fee: {amount: 1500, currency: BDT}
+        receiving_fee: {amount: 0, currency: HKD}
+        fx_margin_pct: 1.8
+        speed: "2-4 business days"
+        note: "Tuition only: the money goes to the university, not to the student's wallet."
+      - name: "Student-endorsed international card"
+        rail: card
+        licensed: true
+        fixed_fee: {amount: 0, currency: BDT}
+        receiving_fee: {amount: 0, currency: HKD}
+        fx_margin_pct: 3.2
+        speed: "instant, card payments only"
+        note: "For paying merchants or the university by card; endorsement limits apply."
+      - name: "Stablecoin transfer"
+        rail: stablecoin
+        licensed: false
+        fixed_fee: {amount: 0, currency: BDT}
+        receiving_fee: {amount: 0, currency: HKD}
+        fx_margin_pct: 0.3
+        speed: "minutes"
+
+  # Ayaan in Hong Kong -> family in Dhaka
+  me_to_family:
+    from: HK
+    to: BD
+    pay_currency: HKD
+    receive_currency: BDT
+    routes:
+      - name: "Licensed money service operator to a mobile wallet"
+        rail: remittance
+        licensed: true
+        fixed_fee: {amount: 30, currency: HKD}
+        receiving_fee: {amount: 0, currency: BDT}
+        fx_margin_pct: 1.2
+        speed: "minutes"
+        note: "Formal channels may qualify for Bangladesh's remittance cash incentive (check the current rate)."
+      - name: "Bank wire (SWIFT)"
+        rail: bank
+        licensed: true
+        fixed_fee: {amount: 150, currency: HKD}
+        receiving_fee: {amount: 500, currency: BDT}
+        fx_margin_pct: 0.9
+        speed: "1-3 business days"
+        note: "Cheaper on large amounts; slower."
+      - name: "Stablecoin transfer"
+        rail: stablecoin
+        licensed: false
+        fixed_fee: {amount: 0, currency: HKD}
+        receiving_fee: {amount: 0, currency: BDT}
+        fx_margin_pct: 0.3
+        speed: "minutes"
