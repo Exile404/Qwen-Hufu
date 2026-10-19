@@ -74,7 +74,15 @@ export type State = {
   mandates: Mandate[];
   approvals: Approval[];
   guard: { enabled: boolean };
+  passkey: PasskeyState;
   roles: { owner: string; agent: string; guardian: string | null };
+};
+
+export type PasskeyState = {
+  registered: boolean;
+  credential_id: string | null;
+  signatures_used: number;
+  owner_key_locked: boolean;
 };
 
 export type HistoryItem = {
@@ -89,6 +97,7 @@ export type HistoryItem = {
   request_id?: number;
   mandate_id?: number;
   by?: string;
+  action?: string;
 };
 
 export type Decision = "ALLOW" | "ASK" | "BLOCK";

@@ -4,6 +4,7 @@ import { Anchor, Ban, CircleCheck, FlaskConical, KeyRound, Mail, ShieldCheck, Sh
 import { useState } from "react";
 
 import { RiskBadge, TxLink } from "@/components/hufu/bits";
+import { passkeyActionLabel } from "@/components/hufu/passkey";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,11 @@ const KIND_LABEL: Record<string, string> = {
   mandate_created: "Recurring payment signed",
   frozen: "Wallet frozen",
   unfrozen: "Wallet unfrozen",
+  passkey_set: "Passkey registered",
+  passkey_removed: "Passkey removed",
+  passkey_signed: "Your passkey signed",
+  owner_key_locked: "Owner key locked",
+  owner_key_unlocked: "Owner key unlocked",
 };
 
 export function ActivityPanel({ items, explorer }: { items: HistoryItem[]; explorer: string | null }) {
@@ -44,6 +50,8 @@ export function ActivityPanel({ items, explorer }: { items: HistoryItem[]; explo
           <span className="text-muted-foreground">
             {h.kind === "conversion"
               ? `${h.from} → ${h.to}`
+              : h.kind === "passkey_signed"
+                ? `${passkeyActionLabel(h.action)} · verified on-chain`
               : [h.amount !== undefined ? `${fmt(h.amount)} ${h.token}` : null, h.to ? `to ${h.to.startsWith("0x") ? short(h.to) : h.to}` : null,
                   h.label, h.request_id !== undefined ? `request #${h.request_id}` : null]
                   .filter(Boolean)

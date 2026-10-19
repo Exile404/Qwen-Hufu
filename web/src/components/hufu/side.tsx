@@ -1,12 +1,13 @@
 "use client";
 
-import { Check, Clock, KeyRound, Repeat, Snowflake, Wallet, X } from "lucide-react";
+import { Check, Clock, Fingerprint, KeyRound, Repeat, Snowflake, Wallet, X } from "lucide-react";
 import { useState } from "react";
 
 import { TxLink } from "@/components/hufu/bits";
+import { useStudent } from "@/components/hufu/passkey";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { fmt, post, short, type Approval, type State, type TxResult } from "@/lib/api";
+import { fmt, short, type Approval, type State, type TxResult } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export function WalletCard({ state }: { state: State }) {
@@ -73,12 +74,14 @@ export function ApprovalsCard({
   const [busy, setBusy] = useState<number | null>(null);
   const [last, setLast] = useState<{ id: number; verb: string; res: TxResult } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const act = useStudent();
+  const withPasskey = state.passkey.registered;
 
   async function decide(id: number, verb: "approve" | "reject") {
     setBusy(id);
     setError(null);
     try {
-      const res = await post<TxResult>(`/approvals/${id}/${verb}`);
+      const res = await act(`/approvals/${id}/${verb}`);
       setLast({ id, verb, res });
     } catch (e) {
       setError((e as Error).message);
@@ -92,7 +95,10 @@ export function ApprovalsCard({
     <Card className={cn(state.approvals.length > 0 && "ring-2 ring-ask/50")}>
       <CardHeader>
         <CardTitle>Your half of the tally</CardTitle>
-        <CardDescription>Anything beyond the agent&apos;s limits waits here for your signature.</CardDescription>
+        <CardDescription>
+          Anything beyond the agent&apos;s limits waits here for your signature
+          {withPasskey ? ", made with your passkey" : ""}.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {state.approvals.length === 0 && <p className="text-sm text-muted-foreground">Nothing waiting for you.</p>}
@@ -118,7 +124,7 @@ export function ApprovalsCard({
               ))}
               <div className="flex gap-2">
                 <Button size="sm" onClick={() => decide(a.id, "approve")} disabled={busy !== null} variant={risky ? "outline" : "default"}>
-                  <Check /> Approve
+                  {withPasskey ? <Fingerprint /> : <Check />} {withPasskey ? "Approve with passkey" : "Approve"}
                 </Button>
                 <Button size="sm" variant={risky ? "default" : "outline"} onClick={() => decide(a.id, "reject")} disabled={busy !== null}>
                   <X /> Reject

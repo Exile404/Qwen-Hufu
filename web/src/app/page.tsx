@@ -1,11 +1,12 @@
 "use client";
 
-import { Activity, FlaskConical, Inbox, Scale, ScrollText, ShieldCheck, ShieldOff, Snowflake, Sun } from "lucide-react";
+import { Activity, Fingerprint, FlaskConical, Inbox, Scale, ScrollText, ShieldCheck, ShieldOff, Snowflake, Sun } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { AutopilotCard } from "@/components/hufu/autopilot-card";
 import { SealLogo } from "@/components/hufu/bits";
 import { ChatPanel } from "@/components/hufu/chat-panel";
+import { PasskeyCard, StudentProvider, useStudent } from "@/components/hufu/passkey";
 import { HuitongCard } from "@/components/hufu/huitong-card";
 import { ActivityPanel, AttackLab, AuditPanel, CompliancePanel, InboxPanel } from "@/components/hufu/panels";
 import { ApprovalsCard, MandatesCard, WalletCard } from "@/components/hufu/side";
@@ -26,6 +27,14 @@ import { usePoll } from "@/lib/use-poll";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
+  return (
+    <StudentProvider>
+      <Dashboard />
+    </StudentProvider>
+  );
+}
+
+function Dashboard() {
   const [version, setVersion] = useState(0);
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
   const { data: state, error } = usePoll<State>("/state", version, 3000);
@@ -35,6 +44,8 @@ export default function Home() {
   const { data: autopilot } = usePoll<AutopilotStatus>("/autopilot", version, 4000);
   const { data: compliance } = usePoll<ComplianceView>("/compliance", version, 8000);
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const studentAct = useStudent();
 
   const explorer = state?.explorer_tx_url ?? null;
   const frozen = state?.status.frozen ?? false;
@@ -45,6 +56,20 @@ export default function Home() {
     await post(path, body).catch(() => null);
     setBusy(false);
     refresh();
+  }
+
+  async function unfreeze() {
+    setBusy(true);
+    setNotice(null);
+    try {
+      const res = await studentAct("/unfreeze");
+      if (res.status !== "success") setNotice(res.hint ?? res.error ?? res.status);
+    } catch (e) {
+      setNotice((e as Error).message);
+    } finally {
+      setBusy(false);
+      refresh();
+    }
   }
 
   return (
@@ -70,8 +95,8 @@ export default function Home() {
               {guardOn ? <ShieldCheck className="text-allow" /> : <ShieldOff />} Guard {guardOn ? "on" : "off"}
             </Button>
             {frozen ? (
-              <Button size="sm" variant="outline" onClick={() => act("/unfreeze")} disabled={busy}>
-                <Sun /> Unfreeze (you)
+              <Button size="sm" variant="outline" onClick={unfreeze} disabled={busy}>
+                {state.passkey.registered ? <Fingerprint /> : <Sun />} Unfreeze ({state.passkey.registered ? "passkey" : "you"})
               </Button>
             ) : (
               <>
@@ -86,6 +111,8 @@ export default function Home() {
           </>
         )}
       </header>
+
+      {notice && <p className="text-right text-xs text-seal">{notice}</p>}
 
       {error && !state && (
         <Card>
@@ -107,6 +134,7 @@ export default function Home() {
             </div>
             <div className="space-y-4 lg:col-span-5 lg:h-[calc(100vh-9rem)] lg:overflow-y-auto lg:pr-1">
               <ApprovalsCard state={state} explorer={explorer} onChange={refresh} />
+              <PasskeyCard state={state} explorer={explorer} onChange={refresh} />
               <AutopilotCard status={autopilot} onChange={refresh} />
               <WalletCard state={state} />
               <MandatesCard state={state} />
