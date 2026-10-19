@@ -34,6 +34,15 @@ def test_demo_sanctioned_address_is_screened():
     assert compliance.screening_status()["entries"] >= 1
 
 
+@pytest.mark.skipif(not compliance.OFAC_FILE.exists(), reason="run `make sanctions-update` first")
+def test_real_ofac_listed_address_is_screened():
+    hit = compliance.screen(
+        "0x098B716B8Aaf21512996dC57EB0615e2383E2f96"
+    )  # Ronin bridge exploiter, listed 2022
+    assert hit and hit.list == "OFAC SDN"
+    assert compliance.screening_status()["ofac_entries"] > 100
+
+
 @pytest.fixture
 def listed(tmp_path, monkeypatch):
     """Put addresses on a temporary screening list."""
