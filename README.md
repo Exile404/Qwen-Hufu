@@ -13,7 +13,7 @@ Hufu is an AI agent wallet for international students. It pays rent, tuition and
 | Technical documentation | [docs/TECHNICAL.md](docs/TECHNICAL.md) |
 | Security self-assessment | [docs/SECURITY_SELF_ASSESSMENT.md](docs/SECURITY_SELF_ASSESSMENT.md) |
 | Compliance mapping | [docs/COMPLIANCE.md](docs/COMPLIANCE.md): HK, mainland China, Bangladesh and FATF rules mapped to Hufu's controls, with sources |
-| Red-team results | [docs/evidence/redteam/](docs/evidence/redteam/README.md): full Hufu stopped **all 40 attacks in each of three runs (0/120)** and completed every normal task; with no protection, 16/120 got through (p = 0.00002) |
+| Red-team results | [docs/evidence/redteam/](docs/evidence/redteam/README.md): full Hufu stopped **all 40 attacks in each of three runs (0/120)** and completed every normal task; with no protection, 16/120 got through (p = 0.00002). With a second model family (Llama 3.1 8B), full Hufu again stopped 40/40 |
 | On-chain evidence | [docs/evidence/onchain-11155111.md](docs/evidence/onchain-11155111.md): every demo step on Ethereum Sepolia with Etherscan links |
 | Design notes and development history | [docs/DESIGN.md](docs/DESIGN.md) |
 | Third-party licences | [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) |
@@ -36,7 +36,7 @@ The Qin-era Du Tiger Tally (杜虎符) carries a rule: the commander may act alo
 
 <sub>The real dashboard on a local chain. Asked to pay rent to a "new wallet" from an email, Hufu flags the lookalike address and refuses. An over-limit payment to the roommate waits in the student's half of the tally, to be approved with a passkey.</sub>
 
-- **Chat:** every step shows the guard's decision (Allow / Ask Ayaan / Block) and the reason, with transaction links.
+- **Chat:** every step streams in as it runs, showing the guard's decision (Allow / Ask Ayaan / Block), the reason and the transaction link.
 - **Your half of the tally:** approval queue; risky requests carry warnings in red.
 - **Your half, on your device:** register a passkey (phone, Touch ID, Windows Hello or a security key). Every approval then shows exactly what will be signed, your fingerprint, face or PIN signs it, and the vault checks the signature on-chain. Lock the owner key and the key file on the computer has no power left; freezing still needs nobody's permission.
 
@@ -107,7 +107,7 @@ Quality checks (also run by [CI](.github/workflows/ci.yml) on every push, except
 | Contract tests (`forge test`) | 97 tests incl. fuzzing, 25 passkey tests and FISCO BCOS millisecond timestamps; `HufuVault` 99% lines (the one uncounted line is inline assembly), 98% branches (`forge coverage --ir-minimum`) |
 | Contract static analysis | `forge lint` clean; Slither: no high or medium findings (11 low and 3 informational, all intentional and justified in the code) |
 | Passkey in a browser | `make e2e-passkey`: register, approve, lock the owner key, unfreeze and cancel in Google Chrome with a virtual WebAuthn authenticator |
-| Agent | `ruff`, `mypy` clean; 87 unit and on-chain tests (`pytest -m "not llm"`) + 9 end-to-end tests with the model |
+| Agent | `ruff`, `mypy` clean; 91 unit and on-chain tests (`pytest -m "not llm"`) + 9 end-to-end tests with the model |
 | Dashboard | `pnpm typecheck`, `pnpm lint`, `pnpm build`; `pnpm audit --prod` and `pip-audit`: no known vulnerabilities |
 | Red team | 40 attacks + 15 normal tasks × 4 configurations, judged on-chain ([results](docs/evidence/redteam/README.md)) |
 
