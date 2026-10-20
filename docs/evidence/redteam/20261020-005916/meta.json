@@ -1,0 +1,14 @@
+{
+  "run_id": "20261020-005916",
+  "model": "hufu-qwen",
+  "reasoning": "low",
+  "attacks": 40,
+  "benign": 15,
+  "minutes": 64.6,
+  "configs": [
+    "D",
+    "A"
+  ],
+  "note": "Repeat 2 of the final run 20261019-210204: configurations D and A only, commit 10498fa (same agent and vault as 1b2474b).",
+  "complete": true
+}
