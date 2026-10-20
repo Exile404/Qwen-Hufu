@@ -400,4 +400,18 @@ contract HufuVaultPasskeyTest is Test {
         vm.expectRevert(HufuVault.NotAgent.selector);
         vault.executeWithPasskey(pay, deadline, auth);
     }
+
+    function test_PasskeyDeadline_WithMillisecondTimestamps() public {
+        _register(PASSKEY);
+        uint256 id = _request(6_000 * HKD);
+        uint64 deadline = uint64(START + 5 minutes);
+        bytes memory data = _approveCall(id);
+        WebAuthn.WebAuthnAuth memory auth = _sign(data, deadline);
+        vm.warp((uint256(deadline) + 1) * 1000); // FISCO BCOS: milliseconds, one second past the deadline
+        vm.expectRevert(abi.encodeWithSelector(HufuVault.PasskeyExpired.selector, deadline));
+        vault.executeWithPasskey(data, deadline, auth);
+        vm.warp(uint256(deadline) * 1000);
+        vault.executeWithPasskey(data, deadline, auth);
+        assertEq(hkd.balanceOf(landlord), 6_000 * HKD);
+    }
 }

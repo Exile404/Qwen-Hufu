@@ -75,7 +75,7 @@ contract HufuVault is ReentrancyGuard {
     /// @dev Optional per-payee, per-token cap on what the agent pays that payee per UTC day.
     ///      0 = only the token caps apply.
     mapping(address payee => mapping(address token => uint256)) public payeeCap;
-    /// @dev Agent spend per token per UTC day (block.timestamp / 1 days).
+    /// @dev Agent spend per token per UTC day (`_now() / 1 days`).
     mapping(address token => mapping(uint256 day => uint256)) public spentOnDay;
     /// @dev Agent payments per payee per token per UTC day, checked against payeeCap.
     mapping(address payee => mapping(address token => mapping(uint256 day => uint256))) public
@@ -182,8 +182,7 @@ contract HufuVault is ReentrancyGuard {
     modifier agentCanAct() {
         if (msg.sender != agent) revert NotAgent();
         if (paused) revert IsPaused();
-        // forge-lint: disable-next-line(block-timestamp) -- session expiry is days long
-        if (block.timestamp > agentExpiry) revert AgentExpired(agentExpiry);
+        if (_now() > agentExpiry) revert AgentExpired(agentExpiry);
         _;
     }
 
@@ -233,7 +232,7 @@ contract HufuVault is ReentrancyGuard {
         if (!tokenPolicy[token].enabled) revert TokenNotEnabled(token);
         id = _requests.length;
         // forge-lint: disable-next-line(unsafe-typecast) -- uint64 seconds overflow in ~584 billion years
-        uint64 createdAt = uint64(block.timestamp);
+        uint64 createdAt = uint64(_now());
         _requests.push(PaymentRequest(token, to, amount, memoHash, createdAt, RequestStatus.Pending));
         emit PaymentRequested(id, token, to, amount, memoHash);
     }
@@ -244,8 +243,7 @@ contract HufuVault is ReentrancyGuard {
         if (id >= _mandates.length) revert UnknownMandate(id);
         Mandate storage m = _mandates[id];
         if (!m.active) revert MandateNotActive(id);
-        // forge-lint: disable-next-line(block-timestamp) -- schedules are days apart; validator drift is seconds
-        if (block.timestamp < m.nextDue) revert MandateNotDue(id, m.nextDue);
+        if (_now() < m.nextDue) revert MandateNotDue(id, m.nextDue);
         if (m.end != 0 && m.nextDue > m.end) revert MandateEnded(id);
         if (!payees[m.payee].allowed) revert PayeeNotAllowed(m.payee);
         if (!tokenPolicy[m.token].enabled) revert TokenNotEnabled(m.token);
@@ -280,7 +278,7 @@ contract HufuVault is ReentrancyGuard {
 
     /// @notice Commit the head of the off-chain hash-chained audit log.
     function anchorAudit(bytes32 head) external onlyAgent {
-        emit AuditAnchored(head, block.timestamp);
+        emit AuditAnchored(head, _now());
     }
 
     // ------------------------------------------------------------------
@@ -434,8 +432,7 @@ contract HufuVault is ReentrancyGuard {
         returns (bytes memory result)
     {
         if (passkeyX == 0 && passkeyY == 0) revert NoPasskey();
-        // forge-lint: disable-next-line(block-timestamp) -- deadlines are minutes long
-        if (block.timestamp > validUntil) revert PasskeyExpired(validUntil);
+        if (_now() > validUntil) revert PasskeyExpired(validUntil);
         if (data.length < 4) revert NoCall();
         uint256 nonce = passkeyNonce;
         bytes32 digest = passkeyDigest(data, nonce, validUntil);
@@ -469,7 +466,7 @@ contract HufuVault is ReentrancyGuard {
     // ------------------------------------------------------------------
 
     function today() public view returns (uint256) {
-        return block.timestamp / 1 days;
+        return _now() / 1 days;
     }
 
     function remainingToday(address token) public view returns (uint256) {
@@ -490,8 +487,7 @@ contract HufuVault is ReentrancyGuard {
     }
 
     function agentActive() external view returns (bool) {
-        // forge-lint: disable-next-line(block-timestamp)
-        return !paused && block.timestamp <= agentExpiry;
+        return !paused && _now() <= agentExpiry;
     }
 
     function mandateCount() external view returns (uint256) {
@@ -515,6 +511,15 @@ contract HufuVault is ReentrancyGuard {
     // ------------------------------------------------------------------
     // Internal
     // ------------------------------------------------------------------
+
+    /// @dev Unix time in seconds. FISCO BCOS, WeBank's consortium chain, gives `block.timestamp` in
+    ///      milliseconds. A value that large cannot be seconds (it would be after the year 33,000), so it is
+    ///      scaled down; on Ethereum this is always `block.timestamp` unchanged.
+    function _now() internal view returns (uint256) {
+        uint256 t = block.timestamp;
+        // forge-lint: disable-next-line(block-timestamp) -- a unit check; time limits here are minutes to days long
+        return t > 1e12 ? t / 1000 : t;
+    }
 
     /// @dev The per-payee cap is a daily total, so splitting a payment into smaller ones cannot pass it.
     function _spendToPayee(address token, address to, uint256 amount) internal {

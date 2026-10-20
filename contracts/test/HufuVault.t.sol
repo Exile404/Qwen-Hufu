@@ -664,4 +664,36 @@ contract HufuVaultTest is Test {
         vm.stopPrank();
         assertLe(usd.balanceOf(mum), 200 * USD);
     }
+
+    // ------------------------------------------------------------------ FISCO BCOS: millisecond timestamps
+
+    function test_MillisecondTimestamps_ReadAsSeconds() public {
+        vm.warp(START * 1000 + 500); // FISCO BCOS gives block.timestamp in milliseconds
+        assertEq(vault.today(), START / 1 days);
+        assertTrue(vault.agentActive());
+        vm.prank(agent);
+        vault.pay(address(hkd), landlord, 100 * HKD, bytes32(0));
+        assertEq(vault.spentOnDay(address(hkd), START / 1 days), 100 * HKD);
+
+        vm.warp((START + 31 days) * 1000); // the 30-day session key has expired
+        assertFalse(vault.agentActive());
+        vm.prank(agent);
+        vm.expectRevert(abi.encodeWithSelector(HufuVault.AgentExpired.selector, uint64(START + 30 days)));
+        vault.pay(address(hkd), landlord, 1 * HKD, bytes32(0));
+    }
+
+    function test_MillisecondTimestamps_MandateFallsDueOnTime() public {
+        vm.prank(owner);
+        uint256 id = vault.createMandate(
+            landlord, address(hkd), 4_500 * HKD, 30 days, uint64(START + 1 days), 0, "Rent"
+        );
+        vm.warp((START + 1 days) * 1000 - 1); // one millisecond early
+        vm.prank(agent);
+        vm.expectRevert(abi.encodeWithSelector(HufuVault.MandateNotDue.selector, id, uint64(START + 1 days)));
+        vault.executeMandate(id);
+        vm.warp((START + 1 days) * 1000);
+        vm.prank(agent);
+        vault.executeMandate(id);
+        assertEq(hkd.balanceOf(landlord), 4_500 * HKD);
+    }
 }
