@@ -55,6 +55,10 @@ A hufu (虎符) is a bronze tiger split in two. The ruler kept one half and the 
 
 Once the model has proposed an action, three independent checks stand between it and the money. The guard catches payments that are within the limits but still wrong, and explains why. The vault has the final word on limits even if the guard and the model are both compromised. The student breaks the tie on anything risky. The model never holds a key, and nothing assumes it behaves.
 
+![The Hufu dashboard](images/dashboard.png)
+
+*The dashboard during the demo. Ayaan asked Hufu to send the roommate 800 HKD, which is over the roommate's limit, so the request waits for a passkey signature. In the chat, Hufu has read the inbox, and the guard has flagged both phishing emails, including the one from a lookalike of the landlord's address.*
+
 ### Components
 
 | Path | What it does |
