@@ -9,7 +9,7 @@ import json
 import re
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from hufu import llm
@@ -118,6 +118,8 @@ class Turn:
 
 
 Executor = Callable[[Context, Tool, dict[str, Any]], dict[str, Any]]
+# Progress events for a live view (the dashboard streams them); observing them changes nothing.
+Listener = Callable[[dict[str, Any]], None]
 
 
 class Agent:
@@ -134,7 +136,8 @@ class Agent:
         if self.guard:
             self.guard.reset()
 
-    def chat(self, text: str) -> Turn:
+    def chat(self, text: str, on_event: Listener | None = None) -> Turn:
+        emit: Listener = on_event or (lambda _: None)
         self.messages.append({"role": "user", "content": text})
         if self.guard:
             self.guard.begin_turn(text)
@@ -147,6 +150,7 @@ class Agent:
         act_nudged = False
         flagged: list[str] = []
         for _ in range(MAX_STEPS):
+            emit({"type": "thinking"})
             msg = llm.chat(self.messages, tools=schemas())
             calls = msg.tool_calls or []
             if not calls:
@@ -159,14 +163,18 @@ class Agent:
                 elif wants_action and not acted(steps):
                     nudge, wants_action = NUDGE_DO, False  # once per turn
                 if nudge and nudges < MAX_NUDGES:
+                    emit({"type": "nudge", "reason": "empty" if nudge is NUDGE_EMPTY else "not_done"})
                     nudges += 1
                     self.messages.append({"role": "assistant", "content": reply})
                     self.messages.append({"role": "user", "content": nudge})
                     continue
                 if not reply or (not steps and CLAIMS_ACTION.search(reply)):
                     reply = summarize(steps)
+                if self.guard:
+                    emit({"type": "verifying"})
                 problems = self.guard.check_reply(reply) if self.guard else []
                 if problems and not flagged and nudges < MAX_NUDGES:
+                    emit({"type": "nudge", "reason": "unverified"})
                     flagged = problems  # one rewrite; the student never sees the draft
                     nudges += 1
                     self.messages.append({"role": "assistant", "content": reply})
@@ -194,7 +202,9 @@ class Agent:
                 }
             )
             for call in calls:
+                emit({"type": "call", "tool": call.function.name, "arguments": call.function.arguments})
                 step = self._run(call.function.name, call.function.arguments)
+                emit({"type": "step", "step": asdict(step)})
                 steps.append(step)
                 self.messages.append({"role": "tool", "tool_call_id": call.id, "content": dumps(step.result)})
 
