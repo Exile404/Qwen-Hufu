@@ -33,9 +33,9 @@ The Qin-era Du Tiger Tally (杜虎符) carries a rule: the commander may act alo
 
 ## What it looks like
 
-![The Hufu dashboard: the guard flags a lookalike-address email, the agent refuses it, an over-limit payment waits for the student's passkey](docs/images/dashboard.png)
+![The Hufu dashboard: an over-limit payment goes to the student for approval, and the guard flags two phishing emails, one with a lookalike of the landlord's address](docs/images/dashboard.png)
 
-<sub>The real dashboard on a local chain. Asked to pay rent to a "new wallet" from an email, Hufu flags the lookalike address and refuses. An over-limit payment to the roommate waits in the student's half of the tally, to be approved with a passkey.</sub>
+<sub>The real dashboard on a local chain. Asked to send the roommate 800 HKD, over the 500 daily limit, the guard asks instead of paying, and the request waits in the student's half of the tally for a passkey signature. Reading the inbox, the guard rates two phishing emails high risk, including a "new wallet" that imitates the landlord's address, and nothing is paid.</sub>
 
 - **Chat:** every step streams in as it runs, showing the guard's decision (Allow / Ask Ayaan / Block), the reason and the transaction link.
 - **Your half of the tally:** approval queue; risky requests carry warnings in red.
