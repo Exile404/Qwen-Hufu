@@ -1,4 +1,4 @@
-# Hufu 虎符 — Compliance mapping
+# Hufu 虎符: Compliance mapping
 
 **What Hufu is, legally.** Wallet software that runs on the student's own device and controls a vault the student owns. It does not issue stablecoins, hold customer money, exchange currencies for others, or onboard customers. So most rules below apply to the *institutions around it* (stablecoin issuers, banks, virtual-asset service providers). This document shows, rule by rule, which part falls to wallet software and which Hufu control implements it. In the prototype it runs on test tokens only.
 
@@ -19,7 +19,7 @@ Sources are marked **[primary]** (the regulator or the law itself) or **[seconda
 | 9 | **Bangladesh Bank notices** on virtual currencies (2014, 2017, 2021, 2022) [S13][S14] | Virtual currencies are not recognised under the Foreign Exchange Regulation Act 1947; dealing in them risks breaching the Money Laundering Prevention Act 2012 and the Anti-Terrorism Act 2009 | **Huitong** never offers stablecoin or crypto routes to or from Bangladesh, only bank and licensed money-service routes, and shows the reason. The agent's instructions forbid suggesting them | `huitong.py` · `remittance.yaml` | Implemented |
 | 10 | **PBoC and nine other authorities: Notice on further preventing and disposing of the risks of virtual-currency trading speculation** (Sept 2021, Yinfa [2021] No. 237) [S15] | Virtual currencies are not legal tender. Exchange, matching and related services are illegal financial activities for mainland residents | No crypto route for mainland China corridors. Hufu makes payments only: no exchange or trading service. The persona and the stablecoin use are in Hong Kong | `huitong.py` | Implemented as a jurisdiction rule |
 | 11 | **Hong Kong Personal Data (Privacy) Ordinance (Cap. 486)** [S16] | Data protection principles: purpose limitation, data minimisation, security | Local model, so no chat text leaves the device. Memo text stays local and only its hash goes on-chain; the audit log is on the device with only its head on-chain | `store.py` · `guard/audit.py` | Prototype |
-| 12 | **KYC / customer due diligence:** for stablecoin issuers, at issuance and redemption, including at HK$8,000 or more [S3] | Identify and verify the customer | Falls on the licensed issuer or on-ramp. Hufu onboards no one and holds no fiat | — | Out of scope (stated) |
+| 12 | **KYC / customer due diligence:** for stablecoin issuers, at issuance and redemption, including at HK$8,000 or more [S3] | Identify and verify the customer | Falls on the licensed issuer or on-ramp. Hufu onboards no one and holds no fiat | n/a | Out of scope (stated) |
 
 ## 2. What Hufu does not cover
 

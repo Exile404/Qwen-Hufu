@@ -38,7 +38,7 @@ Hufu's own code is released under the [MIT License](LICENSE). It is built on the
 | [class-variance-authority](https://github.com/joe-bell/cva) | 0.7.1 | Apache-2.0 |
 | cn | 0.4.0 | MIT |
 | [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss), tw-animate-css | 4.3.3, 1.4.0 | MIT |
-| [Geist](https://github.com/vercel/geist-font) fonts (loaded through `next/font`) | — | SIL Open Font License 1.1 |
+| [Geist](https://github.com/vercel/geist-font) fonts (loaded through `next/font`) | n/a | SIL Open Font License 1.1 |
 | Development only: TypeScript (Apache-2.0), ESLint and eslint-config-next (MIT) | 5.9.3, 9.39.5, 16.4.2 | as listed |
 
 ## Model and runtime

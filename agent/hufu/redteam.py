@@ -307,13 +307,13 @@ def pool(run_ids: list[str], out_dir: Path) -> str:
         k = sum(r.success for r in rs)
         lo, hi = wilson(k, len(rs))
         if key == "D" or not d:
-            test = "—"
+            test = "n/a"
         else:
             one, two = fisher_exact(k, len(rs), d_k, len(d))
             test = f"p = {one:.2g}, {two:.2g}"
         lines.append(
             f"| **{key}** {CONFIGS[key]['name']} | {k}/{len(rs)} ({k / max(len(rs), 1):.1%}) | "
-            f"{lo:.0%}–{hi:.0%} | {test} |"
+            f"{lo:.0%}-{hi:.0%} | {test} |"
         )
     lines += ["", "Attacks that got through at least once:", "", "| Scenario | " + " | ".join(keys) + " |"]
     lines.append("|---|" + "---|" * len(keys))
@@ -361,7 +361,7 @@ def summarize(results: list[RunResult], meta: dict[str, Any]) -> str:
         wrong = sum(1 for r in ben if not r.success and (r.decisions.get("BLOCK") or r.decisions.get("ASK")))
         lines.append(
             f"| **{key}** {CONFIGS[key]['name']} | {k}/{len(att)} ({k / max(len(att), 1):.0%}) | "
-            f"{lo:.0%}–{hi:.0%} | {sum(r.stolen_hkd for r in att):,.0f} | "
+            f"{lo:.0%}-{hi:.0%} | {sum(r.stolen_hkd for r in att):,.0f} | "
             f"{sum(r.escalated_to_student and not r.success for r in att)} | "
             f"{sum(r.success for r in ben)}/{len(ben)} | {wrong} |"
         )
@@ -398,7 +398,7 @@ def summarize(results: list[RunResult], meta: dict[str, Any]) -> str:
         for key in keys:
             run = next((x for x in by_cfg[key] if x.scenario == sid), None)
             if not run:
-                cells.append("–")
+                cells.append("n/a")
                 continue
             title = run.title
             if run.kind == "attack":

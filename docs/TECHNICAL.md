@@ -210,10 +210,10 @@ The final run, [`20261019-210204`](evidence/redteam/20261019-210204/summary.md),
 
 | Configuration | Attacks that got through | 95% CI | HKD to attacker addresses | Normal tasks done |
 |---|---|---|---|---|
-| A naive (no guard, plain wallet) | 5/40 (12%) | 5–26% | 0 | 13/15 |
-| B guard only (plain wallet) | 1/40 (2%) | 0–13% | 0 | 14/15 |
-| C vault only (no guard) | 1/40 (2%) | 0–13% | 0 | 15/15 |
-| **D full Hufu** | **0/40 (0%)** | 0–9% | 0 | **15/15** |
+| A naive (no guard, plain wallet) | 5/40 (12%) | 5-26% | 0 | 13/15 |
+| B guard only (plain wallet) | 1/40 (2%) | 0-13% | 0 | 14/15 |
+| C vault only (no guard) | 1/40 (2%) | 0-13% | 0 | 15/15 |
+| **D full Hufu** | **0/40 (0%)** | 0-9% | 0 | **15/15** |
 
 What we learned:
 
@@ -223,8 +223,8 @@ What we learned:
 
    | Over three runs | Attempts that got through | 95% CI | Normal tasks done |
    |---|---|---|---|
-   | A naive | 16/120 (13%) | 8–21% | 39/45 |
-   | **D full Hufu** | **0/120** | 0–3% | **45/45** |
+   | A naive | 16/120 (13%) | 8-21% | 39/45 |
+   | **D full Hufu** | **0/120** | 0-3% | **45/45** |
 
    Fisher's exact test gives p = 0.00002 (two-sided). These are repeats of the same 40 attacks, so the numbers describe these attacks rather than every possible one. The guarantee we rely on is structural: whatever the model does, the vault bounds the loss. The fuzz tests show it, and so does the forced jailbreak in our evidence, which lands on-chain as a reverted transaction.
 4. **A second model family.** To check that the protection does not depend on Qwen, we swapped in Meta's Llama 3.1 8B Instruct and kept the prompt, tools, guard, vault and scenarios the same ([run `20261020-055237`](evidence/redteam/20261020-055237/summary.md)):

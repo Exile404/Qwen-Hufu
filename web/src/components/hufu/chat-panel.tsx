@@ -240,7 +240,7 @@ export function ChatPanel({ explorer, onChange }: { explorer: string | null; onC
       <CardHeader>
         <CardTitle>Talk to Hufu</CardTitle>
         <CardDescription>
-          Local Qwen3.5 9B. Every action passes the guard, then the vault. You see each step as it runs; most replies take 5–30 s, reading the inbox up to a minute.
+          Local Qwen3.5 9B. Every action passes the guard, then the vault. You see each step as it runs; most replies take 5 to 30 s, reading the inbox up to a minute.
         </CardDescription>
         <CardAction>
           <Button variant="ghost" size="sm" onClick={reset} disabled={busy}>

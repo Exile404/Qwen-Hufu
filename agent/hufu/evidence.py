@@ -50,7 +50,7 @@ class Recorder:
             {
                 "task": task,
                 "action": action,
-                "decision": g.get("decision", "—"),
+                "decision": g.get("decision", "n/a"),
                 "reasons": g.get("reasons", []) if g.get("decision") in ("ASK", "BLOCK") else [],
                 "result": r.get("result") or r.get("status") or "ok",
                 "error": r.get("error"),
@@ -243,7 +243,9 @@ def write(rows: list[dict[str, Any]]) -> None:
         "|---|---|---|---|---|",
     ]
     for r in rows:
-        txs = " ".join(f"[{t[:10]}…]({explorer}{t})" if explorer else f"`{t[:10]}…`" for t in r["txs"]) or "—"
+        txs = (
+            " ".join(f"[{t[:10]}…]({explorer}{t})" if explorer else f"`{t[:10]}…`" for t in r["txs"]) or "n/a"
+        )
         result = r["result"] or ""
         if r["error"]:
             result += f" `{r['error']}`"

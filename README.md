@@ -26,7 +26,7 @@ The Qin-era Du Tiger Tally (杜虎符) carries a rule: the commander may act alo
 
 | Tier | The agent may… | Enforced by |
 |---|---|---|
-| T0 Read | read balances, limits, payees, history, inbox, remittance quotes | — |
+| T0 Read | read balances, limits, payees, history, inbox, remittance quotes | n/a |
 | T1 Act within mandate | pay saved payees within per-payment, per-payee daily and overall daily limits; pay due recurring payments; convert currency; **freeze** | guard + vault |
 | T2 Ask the student | file a request for a new recipient, an over-limit amount, a new recurring payment, or anything traced to an email | guard; only the student's half executes (a passkey signature the vault verifies) |
 | T3 Never | change limits, payees, its own key or expiry; unfreeze | no tool exists; vault reverts |
@@ -73,7 +73,7 @@ Then open **http://localhost:3000**. Compose starts a private test chain, deploy
 - `docker compose down` stops it; add `-v` to also delete the downloaded model.
 
 Running the model:
-- **NVIDIA GPU** (needs the NVIDIA Container Toolkit): `docker compose -f compose.yaml -f compose.gpu.yaml up`. Replies take 5–30 s.
+- **NVIDIA GPU** (needs the NVIDIA Container Toolkit): `docker compose -f compose.yaml -f compose.gpu.yaml up`. Replies take 5 to 30 s.
 - **CPU only:** works, but each reply can take minutes, and Docker needs about 10 GB of memory.
 - **Ollama already installed on your machine** (fastest on a Mac): run `ollama pull qwen3.5:9b && ollama create hufu-qwen -f agent/Modelfile`, make Ollama listen on all interfaces (`OLLAMA_HOST=0.0.0.0 ollama serve`; on a Mac, Docker Desktop reaches it without this), then:
 
@@ -121,7 +121,7 @@ Approvals then ask for the passkey. "Lock owner key" makes it the only way to ac
 ```bash
 make test               # Foundry tests + Python unit tests (offline)
 make test-integration   # on-chain integration tests on a private chain (+ model end-to-end tests)
-make redteam            # full red-team suite on a private chain (about 2–3 hours on one GPU)
+make redteam            # full red-team suite on a private chain (about 2 to 3 hours on one GPU)
 make e2e-passkey        # the passkey flow in Chrome with a virtual authenticator (no model needed)
 make evidence           # run the demo tasks through the guard and record every transaction
 ```

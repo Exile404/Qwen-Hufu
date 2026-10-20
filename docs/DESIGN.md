@@ -1,4 +1,4 @@
-# Hufu (虎符) — Design notes and development history
+# Hufu (虎符): Design notes and development history
 
 **FinTechathon 2026, International Track. Topic F (Agent Wallet), with Topic C (cross-border student finance) as the demo story.**
 
@@ -15,7 +15,7 @@ A *hufu* (虎符, tiger tally) is a bronze tiger split in two: the ruler keeps o
 |---|---|
 | The commander moves small forces alone | The agent pays saved payees under the cap, automatically (T1) |
 | Mobilising more than 50 soldiers needs the ruler's half to match | Over the cap, a new payee, or a suspicious request needs the student's approval (T2) |
-| Beacon-fire emergency: act without matching | Freezing the wallet needs no approval — the agent, a guardian or the student can pause. Only spending needs permission. |
+| Beacon-fire emergency: act without matching | Freezing the wallet needs no approval: the agent, a guardian or the student can pause. Only spending needs permission. |
 
 Pitch hook (窃符救赵): when Lord Xinling's men stole the king's half, General Jin Bi held a *matching* tally and still doubted the order, because the situation looked wrong. That is the guard: **a valid key is not enough if the context is suspicious.**
 
@@ -55,7 +55,7 @@ Coinbase launched Agentic Wallets (Feb 2026) with session caps and per-transacti
 | Task completion | 40% | The tasks in §3 end to end, each with a transaction hash or a logged refusal, plus the autopilot (pays due bills, funds them ahead, watches the inbox); 15/15 normal tasks in the final red-team run; every demo step on Ethereum Sepolia ([evidence](evidence/onchain-11155111.md)) |
 | Security & compliance | 30% | Four tiers enforced in code and on-chain, taint tracking, kill switch, stolen-key tripwire, hash-chained audit anchored on-chain, sanctions screening, travel-rule-ready records; red team: full Hufu stopped 40/40 attacks (§5.4) |
 | Innovation & interaction | 30% | Tiger-tally design; live jailbreak where the contract still says no; scam shield; Huitong remittance comparison |
-| On-chain bonus | 0–5 | Source-verified contracts on Sepolia; every step's transaction hash, including the jailbroken agent's transfer that the vault reverted |
+| On-chain bonus | 0-5 | Source-verified contracts on Sepolia; every step's transaction hash, including the jailbroken agent's transfer that the vault reverted |
 
 ---
 
@@ -80,7 +80,7 @@ Coinbase launched Agentic Wallets (Feb 2026) with session caps and per-transacti
 | 4 | **Multi-step:** "Pay my tuition" → not enough tHKD → convert 500 tUSD → execute the due mandate | T1 | Swap tx + mandate tx |
 | 5 | Execute the phone-plan mandate | T1 | Tx hash |
 | 6 | Split utilities with the roommate: 300 tHKD (T1); 800 tHKD exceeds his 500 cap → T2 | T1/T2 | Tx hash + request |
-| 7 | **Huitong:** "Mum is sending me 500 USD — which route is cheapest?" and "Can she just send stablecoins?" → compares licensed routes (fee + FX spread); explains stablecoins are not permitted in Bangladesh | T0 | Comparison log |
+| 7 | **Huitong:** "Mum is sending me 500 USD. Which route is cheapest?" and "Can she just send stablecoins?" → compares licensed routes (fee + FX spread); explains stablecoins are not permitted in Bangladesh | T0 | Comparison log |
 | 8 | **Scam shield:** inbox email "University fee office: our bank account changed, pay to 0x…" → flagged, refused, explained; if the student insists → T2 with warning → rejected | T0/T2 | Guard log + rejected request |
 | 9 | **Address poisoning:** lookalike of the landlord's address (same first/last characters) → blocked | Guard | Guard log |
 | 10 | **Kill switch:** "Freeze my wallet" / dashboard button / guardian → vault paused | T1 (pause) | Pause tx |
@@ -124,9 +124,9 @@ Coinbase launched Agentic Wallets (Feb 2026) with session caps and per-transacti
 ## 5. Components
 
 ### 5.1 Contracts (`contracts/`, Solidity 0.8.28, Foundry, OpenZeppelin 5.6)
-- `MockStablecoin` — 6-decimal test tokens tHKD, tUSD. ✅
-- `MockFXPool` — fixed-rate tUSD⇄tHKD pool with a fee (sample rate 7.80 HKD/USD, owner-set).
-- `HufuVault` — one per student:
+- `MockStablecoin`: 6-decimal test tokens tHKD, tUSD. ✅
+- `MockFXPool`: fixed-rate tUSD⇄tHKD pool with a fee (sample rate 7.80 HKD/USD, owner-set).
+- `HufuVault`: one per student:
   - roles: `owner` (student), `agent` (session key + expiry), `guardian` (can only pause)
   - per-token `perTxCap`, `dailyCap`, UTC-day spend buckets; per-payee daily cap and label
   - `pay` (T1), `requestPayment` → `approveRequest` / `rejectRequest` (T2)
@@ -173,7 +173,7 @@ Each phase was built, then tested by hand and by automated tests, and fixed befo
 | **P1 Contracts** | `HufuVault`, `MockFXPool`, test stablecoins, deploy and seed script | Foundry tests (now 97, including fuzzing); local deployment |
 | **P2 Agent core** | Chain client, tools, agent loop, CLI chat | The everyday tasks run end to end in the CLI |
 | **P3 Guard** | Tiers, taint, scanner, lookalike detection, reply verifier, hash-chained audit with on-chain anchoring, kill switch | Hand-run attacks plus integration tests for every rule |
-| **P4–P5 Dashboard and student features** | API, Next.js dashboard, approvals, Huitong, attack lab | Click-through of the full demo story |
+| **P4-P5 Dashboard and student features** | API, Next.js dashboard, approvals, Huitong, attack lab | Click-through of the full demo story |
 | **P6 Red team** | 40 attacks and 15 normal tasks against four configurations, judged on-chain | The first full run found a real gap (split payments passed the per-payee limit); fixed in the contract and re-run: full Hufu 0/40 ([results](evidence/redteam/README.md)) |
 | **P7 Testnet** | Ethereum Sepolia deployment and evidence capture | Every step's transaction on Etherscan; contracts source-verified |
 | **P8 Hardening** | Autopilot (tripwire, due payments, funding ahead, scam alerts), cash-flow planner, compliance controls (sanctions screening, transfer records), CI | Autopilot and compliance tests on a private chain; CI on every push |
@@ -213,4 +213,4 @@ Every reply is checked by the verifier (numbers and tx hashes must come from too
 
 ## 8. Known risks
 
-The maintained list (R1–R17, with severity and mitigation) is in [SECURITY_SELF_ASSESSMENT.md §4](SECURITY_SELF_ASSESSMENT.md#4-known-risk-list).
+The maintained list (R1-R17, with severity and mitigation) is in [SECURITY_SELF_ASSESSMENT.md §4](SECURITY_SELF_ASSESSMENT.md#4-known-risk-list).

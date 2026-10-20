@@ -361,7 +361,7 @@ export function CompliancePanel({ view, explorer }: { view: ComplianceView | nul
               ? `${fmt(sc.ofac_entries)} from the OFAC SDN list (fetched ${sc.ofac_fetched?.slice(0, 10)})`
               : "OFAC SDN list not loaded yet: run make sanctions-update"}
           </p>
-          <p className="text-muted-foreground">Project list updated {sc.list_updated ?? "—"}</p>
+          <p className="text-muted-foreground">Project list updated {sc.list_updated ?? "n/a"}</p>
         </CardContent>
       </Card>
       <Card size="sm" className="lg:col-span-2">

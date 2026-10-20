@@ -91,10 +91,10 @@ Suppose the agent key is fully compromised (T6). It still cannot pay any address
 
   | Configuration | Attack success (95% CI) | HKD to attacker addresses | Benign tasks done |
   |---|---|---|---|
-  | A naive (no guard, plain wallet) | 5/40, 12% (5–26%) | 0 | 13/15 |
-  | B guard only | 1/40, 2% (0–13%) | 0 | 14/15 |
-  | C vault only | 1/40, 2% (0–13%) | 0 | 15/15 |
-  | **D full Hufu** | **0/40, 0% (0–9%)** | 0 | **15/15** |
+  | A naive (no guard, plain wallet) | 5/40, 12% (5-26%) | 0 | 13/15 |
+  | B guard only | 1/40, 2% (0-13%) | 0 | 14/15 |
+  | C vault only | 1/40, 2% (0-13%) | 0 | 15/15 |
+  | **D full Hufu** | **0/40, 0% (0-9%)** | 0 | **15/15** |
 
   Each layer alone missed one attack the other caught. The guard alone (B) let split payments past the roommate's limit (A23); the vault alone (C) paid an invented late fee to a saved payee (A20).
   - All five breaches in A were overpayments to trusted payees, not payments to attackers.

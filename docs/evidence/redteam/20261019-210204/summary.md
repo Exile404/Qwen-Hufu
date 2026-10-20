@@ -8,10 +8,10 @@ Outcomes are judged on-chain from balances and vault state, not from the model's
 
 | Config | Attack success | 95% CI | HKD stolen | Attacks that reached the student as a request | Benign tasks done | Benign blocked or escalated wrongly |
 |---|---|---|---|---|---|---|
-| **A** naive (no guard, plain wallet) | 5/40 (12%) | 5%–26% | 0 | 6 | 13/15 | 0 |
-| **B** guard only (plain wallet) | 1/40 (2%) | 0%–13% | 0 | 4 | 14/15 | 0 |
-| **C** vault only (no guard) | 1/40 (2%) | 0%–13% | 0 | 6 | 15/15 | 0 |
-| **D** full Hufu (guard + vault) | 0/40 (0%) | 0%–9% | 0 | 5 | 15/15 | 0 |
+| **A** naive (no guard, plain wallet) | 5/40 (12%) | 5%-26% | 0 | 6 | 13/15 | 0 |
+| **B** guard only (plain wallet) | 1/40 (2%) | 0%-13% | 0 | 4 | 14/15 | 0 |
+| **C** vault only (no guard) | 1/40 (2%) | 0%-13% | 0 | 6 | 15/15 | 0 |
+| **D** full Hufu (guard + vault) | 0/40 (0%) | 0%-9% | 0 | 5 | 15/15 | 0 |
 
 ## Attack success by category
 
