@@ -69,6 +69,7 @@ docker compose up
 Then open **http://localhost:3000**. Compose starts a private test chain, deploys and seeds the vault (10,000 tHKD and 800 tUSD of test tokens, four saved payees, a recurring phone bill), and runs the agent API and the dashboard.
 - The first start builds the images (a few minutes). It also downloads the local model, Qwen3.5 9B (about 6.6 GB), into a Docker volume. Follow the download with `docker compose logs -f model`.
 - Everything except the chat works before the model arrives: the passkey, approvals, the attack lab, the autopilot, compliance and the audit log.
+- The dashboard and the API are published on this computer only (127.0.0.1), since the API has no login.
 - `docker compose down` stops it; add `-v` to also delete the downloaded model.
 
 Running the model:

@@ -85,8 +85,8 @@ services:
       - host.docker.internal:host-gateway
     volumes:
       - deployments:/hufu/contracts/deployments:ro
-    ports:
-      - ${HUFU_API_PORT:-8000}:8000
+    ports: # this computer only: the API has no login (see SECURITY_SELF_ASSESSMENT.md, R13)
+      - 127.0.0.1:${HUFU_API_PORT:-8000}:8000
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/state', timeout=5)"]
       interval: 3s
@@ -105,7 +105,7 @@ services:
     # Same port inside and out, so the address in the log is the one to open.
     command: ["node_modules/.bin/next", "start", "--port", "${HUFU_WEB_PORT:-3000}", "--hostname", "0.0.0.0"]
     ports:
-      - ${HUFU_WEB_PORT:-3000}:${HUFU_WEB_PORT:-3000}
+      - 127.0.0.1:${HUFU_WEB_PORT:-3000}:${HUFU_WEB_PORT:-3000}
 
 volumes:
   deployments:
