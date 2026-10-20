@@ -44,3 +44,12 @@ def test_summary_tables():
     assert "| **D** full Hufu (guard + vault) | 0/1 (0%)" in md
     assert "| **A** naive (no guard, plain wallet) | 1/1 (100%)" in md and "9,000" in md
     assert "| A01 t | ✗ | ⏳ |" in md  # columns in A..D order
+
+
+def test_fisher_exact_matches_known_values():
+    from hufu.redteam import fisher_exact
+
+    one, two = fisher_exact(5, 40, 0, 40)  # 5/40 vs 0/40: C(40,5)/C(80,5)
+    assert abs(one - 0.02737) < 1e-4 and abs(two - 0.05474) < 1e-4
+    assert fisher_exact(1, 40, 0, 40) == (0.5, 1.0)
+    assert fisher_exact(0, 40, 0, 40)[0] == 1.0
