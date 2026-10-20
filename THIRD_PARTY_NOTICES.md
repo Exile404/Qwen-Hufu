@@ -47,13 +47,15 @@ Hufu's own code is released under the [MIT License](LICENSE). It is built on the
 |---|---|---|
 | [Qwen3.5 9B](https://ollama.com/library/qwen3.5) (Alibaba Qwen team) | Apache-2.0 | The local language model, run unmodified through Ollama (`make model` builds `hufu-qwen`, which only sets the context length and temperature) |
 | [Ollama](https://github.com/ollama/ollama) | MIT | Local model runtime (not distributed) |
+| [Llama 3.1 8B Instruct](https://ollama.com/library/llama3.1) (Meta) | Llama 3.1 Community License | Second model family in one red-team run only (`hufu-llama`); not part of Hufu and not distributed |
+| [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) (hexgrad), run with [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) (MIT) | Apache-2.0 | AI narration voice (`am_michael`) of the demo video only; not in this repository. The video's end card says the voice is AI-generated |
 
 ## Data
 
 | Data | Source | Terms |
 |---|---|---|
 | `agent/data/compliance/ofac_eth.txt` | U.S. Treasury OFAC SDN list ([sanctionslist.ofac.treas.gov](https://sanctionslist.ofac.treas.gov/Home/static/sdn.html)), fetched 19 Oct 2026 | Work of the U.S. Government, public domain in the U.S. Only the Ethereum-format addresses are kept |
-| Pitch deck photo of the Du Tiger Tally (not in this repository) | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Qin_tiger_tally,_Shaanxi_History_Museum.jpg), by Deadkid dk | CC BY-SA 3.0; cropped; credited on the slide |
+| Pitch deck and demo video photo of the Du Tiger Tally (not in this repository) | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Qin_tiger_tally,_Shaanxi_History_Museum.jpg), by Deadkid dk | CC BY-SA 3.0; cropped; credited on the slide and in the video |
 | `agent/data/seed/` (emails, remittance routes and quotes) | Written for this project | Fictional people and sample numbers; MIT with the rest of the code |
 
 Regulatory texts cited in [docs/COMPLIANCE.md](docs/COMPLIANCE.md) are linked, not copied.
