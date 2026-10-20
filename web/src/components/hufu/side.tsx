@@ -18,7 +18,7 @@ export function WalletCard({ state }: { state: State }) {
         <CardTitle className="flex items-center gap-2">
           <Wallet className="size-4" /> Ayaan&apos;s vault
         </CardTitle>
-        <CardDescription className="font-mono text-xs">{short(state.vault, 10, 8)}</CardDescription>
+        <CardDescription className="font-mono text-xs font-semibold text-white/80">{short(state.vault, 10, 8)}</CardDescription>
         <div aria-hidden className="hufu-chip col-start-2 row-span-2 row-start-1 h-7 w-10 self-center justify-self-end rounded-md" />
       </CardHeader>
       <CardContent className="space-y-4">
@@ -32,13 +32,13 @@ export function WalletCard({ state }: { state: State }) {
           return (
             <div key={sym} className="space-y-1.5">
               <div className="flex items-baseline justify-between">
-                <span className="text-sm text-muted-foreground">{sym}</span>
-                <span className="text-2xl font-semibold tabular-nums">{fmt(t.balance)}</span>
+                <span className="text-sm font-semibold text-white/90">{sym}</span>
+                <span className="text-2xl font-bold tabular-nums text-white">{fmt(t.balance)}</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-white/15">
                 <div className="h-full rounded-full bg-bronze transition-all" style={{ width: `${Math.min(100, used * 100)}%` }} />
               </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
+              <div className="flex justify-between text-xs font-semibold text-white/85">
                 <span>
                   {fmt(t.left_today)} of {fmt(t.daily_limit)} left today
                 </span>
@@ -47,7 +47,7 @@ export function WalletCard({ state }: { state: State }) {
             </div>
           );
         })}
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
           <KeyRound className="size-3" /> Agent key {st.agent_active ? "active" : "inactive"} · expires {st.agent_session_expires}
         </p>
       </CardContent>

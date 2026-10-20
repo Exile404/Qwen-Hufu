@@ -208,6 +208,7 @@
       radial-gradient(55% 110% at 104% 55%, oklch(0.66 0.11 205 / 0.7), transparent 70%),
       radial-gradient(120% 140% at 0% 100%, var(--glow) 0%, oklch(0.47 0.08 205) 22%, transparent 58%);
     --tw-shadow: 0 16px 36px -18px oklch(0.35 0.08 205 / 0.7);
+    text-shadow: 0 1px 2px oklch(0.15 0.02 215 / 0.55);
   }
   .hufu-bankcard [data-slot="card-title"] > svg {
     color: var(--gold);
