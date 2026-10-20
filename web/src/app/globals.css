@@ -13,6 +13,9 @@
   --color-seal: var(--seal);
   --color-seal-foreground: var(--seal-foreground);
   --color-bronze: var(--bronze);
+  --color-gold: var(--gold);
+  --color-glow: var(--glow);
+  --color-charcoal: var(--charcoal);
   --color-allow: var(--allow);
   --color-ask: var(--ask);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -54,24 +57,28 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* WeBank-inspired: charcoal, a teal-cyan glow and a gold chip (teal #0E7C86, glow #18B4C0, gold #E2B65A) */
+  --background: oklch(0.975 0.006 200);
+  --foreground: oklch(0.24 0.012 215);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.24 0.012 215);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.24 0.012 215);
+  --primary: oklch(0.52 0.09 205);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.955 0.015 200);
+  --secondary-foreground: oklch(0.3 0.04 210);
+  --muted: oklch(0.96 0.012 200);
+  --muted-foreground: oklch(0.5 0.02 215);
+  --accent: oklch(0.95 0.02 200);
+  --accent-foreground: oklch(0.3 0.05 210);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.9 0.015 205);
+  --input: oklch(0.9 0.015 205);
+  --ring: oklch(0.65 0.1 200);
+  --gold: oklch(0.8 0.12 82);
+  --glow: oklch(0.71 0.12 205);
+  --charcoal: oklch(0.27 0.012 215);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -81,7 +88,7 @@
   /* Hufu brand: seal vermilion (印章) and tally bronze; decision colours */
   --seal: oklch(0.52 0.19 29);
   --seal-foreground: oklch(0.99 0 0);
-  --bronze: oklch(0.6 0.09 70);
+  --bronze: oklch(0.74 0.12 80);
   --allow: oklch(0.55 0.13 155);
   --ask: oklch(0.68 0.15 70);
   --sidebar: oklch(0.985 0 0);
@@ -95,14 +102,17 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --background: oklch(0.2 0.012 215);
+  --foreground: oklch(0.97 0.005 200);
+  --card: oklch(0.25 0.014 215);
+  --card-foreground: oklch(0.97 0.005 200);
+  --popover: oklch(0.25 0.014 215);
+  --popover-foreground: oklch(0.97 0.005 200);
+  --primary: oklch(0.71 0.12 205);
+  --primary-foreground: oklch(0.2 0.02 215);
+  --gold: oklch(0.82 0.12 82);
+  --glow: oklch(0.71 0.12 205);
+  --charcoal: oklch(0.27 0.012 215);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -139,9 +149,32 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-color: var(--background);
+    background:
+      radial-gradient(1100px 520px at -5% -10%, oklch(0.88 0.06 200 / 0.55), transparent 65%),
+      radial-gradient(900px 480px at 105% 0%, oklch(0.92 0.05 190 / 0.45), transparent 60%),
+      var(--background);
+    background-attachment: fixed;
   }
   html {
     @apply font-sans;
   }
 }
+
+/* The header, styled like a WeBank card: charcoal, a teal-cyan glow from the corner and a touch of gold. */
+.hufu-hero {
+  color: oklch(0.99 0 0);
+  background:
+    radial-gradient(40% 90% at 78% 0%, oklch(0.8 0.12 82 / 0.14), transparent 70%),
+    radial-gradient(45% 140% at 102% 70%, oklch(0.66 0.11 205 / 0.75), transparent 70%),
+    radial-gradient(130% 170% at 0% 100%, var(--glow) 0%, oklch(0.47 0.08 205) 24%, var(--charcoal) 62%),
+    var(--charcoal);
+  box-shadow: 0 12px 32px -16px oklch(0.35 0.08 205 / 0.55);
+}
+
+@layer components {
+  [data-slot="card"] {
+    /* combined with the card's ring by Tailwind's box-shadow stack */
+    --tw-shadow: 0 1px 2px oklch(0.3 0.05 210 / 0.05), 0 10px 28px -16px oklch(0.4 0.08 205 / 0.22);
+  }
+}
+

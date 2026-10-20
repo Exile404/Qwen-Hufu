@@ -74,36 +74,59 @@ function Dashboard() {
 
   return (
     <main className="mx-auto w-full max-w-[1400px] flex-1 space-y-4 px-4 py-4 sm:px-6">
-      <header className="flex flex-wrap items-center gap-3">
-        <SealLogo />
+      <header className="hufu-hero flex flex-wrap items-center gap-3 rounded-2xl px-4 py-3.5 sm:px-5">
+        <SealLogo className="ring-2 ring-gold/40" />
         <div className="mr-auto">
-          <h1 className="text-xl font-semibold tracking-tight">Hufu</h1>
-          <p className="text-sm text-muted-foreground">A tiger tally for your AI. The agent acts alone within your limits; anything more needs your half.</p>
+          <h1 className="text-xl font-semibold tracking-tight">
+            Hufu <span className="font-serif text-gold">虎符</span>
+          </h1>
+          <p className="text-sm text-white/75">A tiger tally for your AI. The agent acts alone within your limits; anything more needs your half.</p>
         </div>
         {state && (
           <>
-            <span className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground">
+            <span className="rounded-full border border-white/20 bg-white/5 px-2.5 py-1 text-xs text-white/80">
               {state.chain_id === 31337 ? "Local chain" : `Chain ${state.chain_id}`} · test tokens only
             </span>
             <Button
               size="sm"
               variant="outline"
-              className={cn(!guardOn && "border-seal text-seal")}
+              className={cn(
+                "border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white",
+                !guardOn && "border-seal bg-seal/25",
+              )}
               onClick={() => act("/guard", { enabled: !guardOn })}
               disabled={busy}
             >
-              {guardOn ? <ShieldCheck className="text-allow" /> : <ShieldOff />} Guard {guardOn ? "on" : "off"}
+              {guardOn ? <ShieldCheck className="text-glow" /> : <ShieldOff />} Guard {guardOn ? "on" : "off"}
             </Button>
             {frozen ? (
-              <Button size="sm" variant="outline" onClick={unfreeze} disabled={busy}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                onClick={unfreeze}
+                disabled={busy}
+              >
                 {state.passkey.registered ? <Fingerprint /> : <Sun />} Unfreeze ({state.passkey.registered ? "passkey" : "you"})
               </Button>
             ) : (
               <>
-                <Button size="sm" variant="destructive" onClick={() => act("/freeze", { by: "student" })} disabled={busy}>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="bg-seal text-white hover:bg-seal/85"
+                  onClick={() => act("/freeze", { by: "student" })}
+                  disabled={busy}
+                >
                   <Snowflake /> Freeze
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => act("/freeze", { by: "guardian" })} disabled={busy}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-white/85 hover:bg-white/10 hover:text-white"
+                  onClick={() => act("/freeze", { by: "guardian" })}
+                  disabled={busy}
+                >
                   Freeze as guardian
                 </Button>
               </>
