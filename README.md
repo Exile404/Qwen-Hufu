@@ -80,7 +80,7 @@ Running the model:
   HUFU_LLM_BASE_URL=http://host.docker.internal:11434/v1 docker compose up chain deploy api web
   ```
 
-Ports 3000 and 8000 busy? Use `HUFU_WEB_PORT=3010 HUFU_API_PORT=8010 docker compose up`. The chain uses Foundry's public Anvil development keys, which are fine for a private test chain only.
+Ports 3000 and 8000 busy? Use `HUFU_WEB_PORT=3010 HUFU_API_PORT=8010 docker compose up` and open http://localhost:3010 (the dashboard is rebuilt for the new API port automatically). The chain uses Foundry's public Anvil development keys, which are fine for a private test chain only.
 
 ## Run it locally
 

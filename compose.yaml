@@ -99,11 +99,13 @@ services:
       target: web
       args:
         NEXT_PUBLIC_API_URL: http://localhost:${HUFU_API_PORT:-8000}
-    image: hufu-web
+    image: hufu-web:api-${HUFU_API_PORT:-8000} # the API address is built in, so another API port means another image
     depends_on:
       api: { condition: service_healthy }
+    # Same port inside and out, so the address in the log is the one to open.
+    command: ["node_modules/.bin/next", "start", "--port", "${HUFU_WEB_PORT:-3000}", "--hostname", "0.0.0.0"]
     ports:
-      - ${HUFU_WEB_PORT:-3000}:3000
+      - ${HUFU_WEB_PORT:-3000}:${HUFU_WEB_PORT:-3000}
 
 volumes:
   deployments:
