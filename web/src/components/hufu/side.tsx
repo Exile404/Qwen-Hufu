@@ -13,12 +13,13 @@ import { cn } from "@/lib/utils";
 export function WalletCard({ state }: { state: State }) {
   const st = state.status;
   return (
-    <Card>
+    <Card className="dark hufu-bankcard">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Wallet className="size-4" /> Ayaan&apos;s vault
         </CardTitle>
         <CardDescription className="font-mono text-xs">{short(state.vault, 10, 8)}</CardDescription>
+        <div aria-hidden className="hufu-chip col-start-2 row-span-2 row-start-1 h-7 w-10 self-center justify-self-end rounded-md" />
       </CardHeader>
       <CardContent className="space-y-4">
         {st.frozen && (
@@ -34,7 +35,7 @@ export function WalletCard({ state }: { state: State }) {
                 <span className="text-sm text-muted-foreground">{sym}</span>
                 <span className="text-2xl font-semibold tabular-nums">{fmt(t.balance)}</span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+              <div className="h-1.5 overflow-hidden rounded-full bg-white/15">
                 <div className="h-full rounded-full bg-bronze transition-all" style={{ width: `${Math.min(100, used * 100)}%` }} />
               </div>
               <div className="flex justify-between text-xs text-muted-foreground">

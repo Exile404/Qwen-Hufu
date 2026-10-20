@@ -236,7 +236,7 @@ export function ChatPanel({ explorer, onChange }: { explorer: string | null; onC
   }
 
   return (
-    <Card className="flex min-h-[560px] flex-col lg:h-[calc(100vh-9rem)]">
+    <Card className="hufu-chat flex min-h-[560px] flex-col lg:h-[calc(100vh-9rem)]">
       <CardHeader>
         <CardTitle>Talk to Hufu</CardTitle>
         <CardDescription>
@@ -258,7 +258,7 @@ export function ChatPanel({ explorer, onChange }: { explorer: string | null; onC
                   <button
                     key={s}
                     onClick={() => send(s)}
-                    className="rounded-full border px-2.5 py-1 text-left text-xs hover:bg-muted"
+                    className="rounded-full border border-primary/25 bg-primary/5 px-2.5 py-1 text-left text-xs text-primary hover:bg-primary/12"
                   >
                     {s}
                   </button>
@@ -289,7 +289,7 @@ export function ChatPanel({ explorer, onChange }: { explorer: string | null; onC
                 key={s}
                 onClick={() => send(s)}
                 disabled={busy}
-                className="shrink-0 rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
+                className="shrink-0 rounded-full border border-primary/20 bg-white/70 px-2.5 py-1 text-xs text-primary/85 hover:bg-primary/10 disabled:opacity-50"
               >
                 {s.length > 38 ? `${s.slice(0, 36)}…` : s}
               </button>

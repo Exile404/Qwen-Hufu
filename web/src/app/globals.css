@@ -79,6 +79,8 @@
   --gold: oklch(0.8 0.12 82);
   --glow: oklch(0.71 0.12 205);
   --charcoal: oklch(0.27 0.012 215);
+  --card-title: oklch(0.32 0.05 210);
+  --card-wash: oklch(0.955 0.03 200 / 0.8);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -113,6 +115,8 @@
   --gold: oklch(0.82 0.12 82);
   --glow: oklch(0.71 0.12 205);
   --charcoal: oklch(0.27 0.012 215);
+  --card-title: oklch(0.97 0.005 200);
+  --card-wash: oklch(1 0 0 / 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -175,6 +179,35 @@
   [data-slot="card"] {
     /* combined with the card's ring by Tailwind's box-shadow stack */
     --tw-shadow: 0 1px 2px oklch(0.3 0.05 210 / 0.05), 0 10px 28px -16px oklch(0.4 0.08 205 / 0.22);
+    background-image: linear-gradient(180deg, var(--card-wash) 0, transparent 92px);
+  }
+  [data-slot="card-title"] {
+    color: var(--card-title);
+  }
+  [data-slot="card-title"] > svg {
+    color: var(--primary);
+  }
+  /* the chat panel: a faint teal glow in the corners */
+  .hufu-chat[data-slot="card"] {
+    background-image:
+      radial-gradient(70% 55% at 100% 100%, oklch(0.93 0.05 200 / 0.55), transparent 70%),
+      radial-gradient(50% 40% at 0% 100%, oklch(0.95 0.035 190 / 0.5), transparent 70%),
+      linear-gradient(180deg, var(--card-wash) 0, transparent 92px);
+  }
+  /* the vault, drawn like a WeBank card: charcoal, a teal-cyan glow and a gold chip */
+  .hufu-bankcard[data-slot="card"] {
+    background-color: var(--charcoal);
+    background-image:
+      radial-gradient(55% 110% at 104% 55%, oklch(0.66 0.11 205 / 0.7), transparent 70%),
+      radial-gradient(120% 140% at 0% 100%, var(--glow) 0%, oklch(0.47 0.08 205) 22%, transparent 58%);
+    --tw-shadow: 0 16px 36px -18px oklch(0.35 0.08 205 / 0.7);
+  }
+  .hufu-bankcard [data-slot="card-title"] > svg {
+    color: var(--gold);
+  }
+  .hufu-chip {
+    background: linear-gradient(135deg, oklch(0.88 0.11 88), oklch(0.7 0.12 75));
+    box-shadow: inset 0 0 0 1px oklch(0.6 0.1 70 / 0.5);
   }
 }
 
