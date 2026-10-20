@@ -1,7 +1,7 @@
 {
   "chain_id": 11155111,
-  "vault": "0x1F60ee92DAFF902a957801029312e39010144c1e",
-  "generated": "2026-10-19 20:16 UTC",
+  "vault": "0x7Ca7FcE5B406131C96aCc53111f8d46E1d54dd5C",
+  "generated": "2026-10-20 01:10 UTC",
   "steps": [
     {
       "task": "1 Spend left today",
@@ -22,7 +22,7 @@
       "error": null,
       "summary": "Paid 4500 tHKD to landlord. 3500.0 tHKD left to spend today.",
       "txs": [
-        "0xcdfb5d8b5939ef3087ef91ba8ae7c31c215366992847074388adf276426f2b2b"
+        "0x4cfd56e600cea53c698140f6047ebcfb358622e6d79eb3890c1a35699a4fd0e1"
       ]
     },
     {
@@ -34,7 +34,7 @@
       "error": null,
       "summary": "Paid 300 tHKD to roommate. 3200.0 tHKD left to spend today.",
       "txs": [
-        "0x43308d9de10ea155145aa26f0ec6b29a878a5a7959b52461a36402e3f4a3945c"
+        "0xa83284323c912cd2ed5ed49602925fda7d80dfe150297d3bfb328c4157d47eed"
       ]
     },
     {
@@ -46,9 +46,9 @@
       ],
       "result": "waiting_for_student_approval",
       "error": null,
-      "summary": "Not paid yet. Sent to Ayaan for approval (#5) because 800 tHKD is more than roommate can still receive today (200 of the 500 tHKD daily limit).",
+      "summary": "Not paid yet. Sent to Ayaan for approval (#10) because 800 tHKD is more than roommate can still receive today (200 of the 500 tHKD daily limit).",
       "txs": [
-        "0x5abdba3d76dce8d492fb8e81a55dd286702c190f85eca2fd85fbf2c5cfef7e0c"
+        "0x62beca03095bf636a2e4c16c33d4b6f0ccae51a6282b67095336557449679b81"
       ]
     },
     {
@@ -60,7 +60,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0xf706c81ae650f69b3a6ccbdb47a8a620c1995829459f05eb20cc29c113888da6"
+        "0x697cf96e11be8d8c82b747eefb7f1d4a66e577e6cdab9191ac0fe793655f8f29"
       ]
     },
     {
@@ -70,7 +70,7 @@
       "reasons": [],
       "result": "waiting_for_student_approval",
       "error": null,
-      "summary": "Proposed 9000 tHKD to university every 30 days until 2027-06-01, waiting for Ayaan's approval (#6).",
+      "summary": "Proposed 9000 tHKD to university every 30 days until 2027-06-01, waiting for Ayaan's approval (#11).",
       "txs": []
     },
     {
@@ -82,7 +82,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0xc69991494fdf73d0b1bbfef1713258ad5ecaec0ef0faeb319a5b75b63743f2f1"
+        "0x2c054e840eb9056dd685cd49dd0731e17607cd5843028772691498efeeeb6e5b"
       ]
     },
     {
@@ -94,10 +94,10 @@
       "error": null,
       "summary": "Converted 513.08 tUSD to tHKD because tHKD was short. Paid Phone & data plan (198.0 tHKD); Tuition instalment (9000.0 tHKD).",
       "txs": [
-        "0x7e6618fe503a4407867a41aeb9aa84d0bcbca97c6aa82fd3a70147765dec8f4f",
-        "0x7cf5c114ea3c0a29a5b3b15cf9536e5ac3956860083cb403bf6fd3d62a611cde",
-        "0x45f347ee91e64aabad7e2e3b503380fefaa97ced3e69e8e623dd734b7ed68342",
-        "0x9dd3988b0cbb57be09ad47074925fa3b58dd6970e96e31b1918aee1b69e64293"
+        "0x921f28cd854276f56363cad1b4f4f5f8a69633c5ac5e4365eebf2b647000ea31",
+        "0x79f0ef6264c289fe12669501013da9292d57fbc04aa25b40127616ba544a0073",
+        "0xa21e59bb58bce193b185eba6bb1d95655740810837b0a5349df418f358dba763",
+        "0x974fd9a9e99b9fc4abe773430c63eefb5c9b82e9045d2b7ab936028def2547cf"
       ]
     },
     {
@@ -158,7 +158,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0xd82a1e374b7477c960eb66b4e8b5a1332a7013edeb0656b49510eac0ed8172c2"
+        "0x09b74e27b1712f34bf62e32afd7c227bef7501535a08b774d20d0e487bae36d6"
       ]
     },
     {
@@ -182,7 +182,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0x377a7f7001086d5514c759ab6b32835ae07882af311d3914d88ca7a3bed62910"
+        "0xa31bc331ee7605cd5e626e130bb0541fa2bbe26229eaf88188be7e3aaf4b88e5"
       ]
     },
     {
@@ -194,7 +194,7 @@
       "error": "PayeeNotAllowed(0x0ae40e2a586e794266ff120b9528c1a1ab75a409)",
       "summary": null,
       "txs": [
-        "0x874e19b8345f182d89d47a742185be47f68d0e76bcb151a9247432e9539a7f46"
+        "0xd46afcc7ed6a308e953c66364d548e1e32b952b171189a6bfda775fcb48eeddd"
       ]
     },
     {
@@ -206,7 +206,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0x98f5cb17619e8efa5a9c199cb5ccb1e57e59bad49666e386b240104a1c1c71dc"
+        "0xf19bfa40b78fab819ce83d116a6066cbd9963c7c8a34c8bd2f1a1e8419928506"
       ]
     },
     {
@@ -216,7 +216,7 @@
       "reasons": [],
       "result": "waiting_for_student_approval",
       "error": null,
-      "summary": "Asked Ayaan to approve a new payee \"Mum (Dhaka)\" (#7).",
+      "summary": "Asked Ayaan to approve a new payee \"Mum (Dhaka)\" (#12).",
       "txs": []
     },
     {
@@ -228,7 +228,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0x0afd6f4db4902e1bacf5c65e9a5726b7007bf60c2640f921d899937e52cdf2e5"
+        "0x9f585092f4263dc740227dec7ee3059772a7fe090ad42c8fa8b61a1ee793a5ff"
       ]
     },
     {
@@ -240,7 +240,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0x2a18bad665c49fcc59d11ebf78d2e0207d945c3de883de0c942f87eeb4c485cc"
+        "0x81b6521e095a89e91c7e047decac89a511186a54deeffaa8bd1dc8057c97d675"
       ]
     },
     {
@@ -252,7 +252,7 @@
       "error": "NotOwner()",
       "summary": null,
       "txs": [
-        "0xf0a355d573265f9687fce2fcf63287b5eaa9abaa7f00eb2717b4a65bf38237c5"
+        "0x2c280edd5e995f4c44584188c5aa40e5dadaa2c11e231dda92b0fe77c46abec4"
       ]
     },
     {
@@ -264,7 +264,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0xf31286073ded30a709725f61cb12394b1878a199109c71ee45d901642441eb98"
+        "0xc1c652627cda7a4074fabc8db1e5414150011c591c44aca2126abc01ebbe53ed"
       ]
     },
     {
@@ -276,7 +276,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0x127db3b18ba17a4f2a1d0dd4114622837d6a2d106861d26ff6c9a21605aca549"
+        "0x097159477f068ffea1c7f7c6c372ee854180ec0c33406106ac1bd67648f9d475"
       ]
     },
     {
@@ -288,7 +288,7 @@
       "error": null,
       "summary": null,
       "txs": [
-        "0x4d5b05f6eba9415635850dfe38d5788ab6d7fd883e34031caa6f8f7cbf2e0294"
+        "0x3ad3823be0fc2f11f5aab256f33524a2d85e29cb8a0187ed61f4926efe3918d1"
       ]
     }
   ]
