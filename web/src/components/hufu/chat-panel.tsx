@@ -174,8 +174,8 @@ function HufuTurn({ turn, explorer }: { turn: TurnView; explorer: string | null 
         <div className="flex gap-2 rounded-md border border-ask/40 bg-ask/10 px-2.5 py-1.5 text-xs text-foreground">
           <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-ask" />
           <span>
-            <strong>Hufu check:</strong> the agent&apos;s draft stated facts no tool result supports (
-            {turn.verifier.join("; ")}), so it was replaced with a summary of what actually happened.
+            <strong>Hufu check:</strong> the agent&apos;s draft was replaced with a summary of what actually
+            happened: {turn.verifier.join("; ")}.
           </span>
         </div>
       )}

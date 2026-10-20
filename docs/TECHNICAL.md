@@ -116,7 +116,7 @@ Rule-based on purpose: fast, explainable in one line, and impossible to prompt-i
 
 ### 4.5 Reply verifier (`guard/verifier.py`) and fallback
 
-Every final reply is checked: each number ≥ 10 must appear in a tool result or a student message (after normalisation, with rounding tolerance; dates ground their year/month/day), and each transaction hash must be one a tool returned. On failure the model gets one internal rewrite request. If the rewrite still fails, or talks about the check, Hufu replaces it with a summary built only from the tools' own `summary` fields and decisions, and tells the student it did so.
+Every final reply is checked: each number ≥ 10 must appear in a tool result or a student message (after normalisation, with rounding tolerance; dates ground their year/month/day), and each transaction hash must be one a tool returned. On failure the model gets one internal rewrite request. If the rewrite still fails, or talks about the check, Hufu replaces it with a summary built only from the tools' own `summary` fields and decisions, and tells the student it did so. A reply that has degenerated into word salad (40 or more words with no punctuation or line break, which we saw once from the 9B model late in a long demo conversation) gets the same summary straight away; none of the 1,061 replies recorded in the red-team runs trips this check.
 
 ### 4.6 Hash-chained audit with on-chain anchoring (`guard/audit.py`)
 

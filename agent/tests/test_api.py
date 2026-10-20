@@ -123,6 +123,35 @@ def test_chat_stream_sends_each_step_then_the_turn(client, monkeypatch):
     assert events[-1]["turn"]["steps"][0]["result"] == events[2]["step"]["result"]
 
 
+def test_garbled_reply_is_replaced_by_what_actually_happened(client, monkeypatch):
+    salad = " ".join(["fairness inclusion opportunity diversity heritage"] * 10)  # 50 words, no breaks
+    replies = iter(
+        [
+            SimpleNamespace(
+                content="",
+                tool_calls=[
+                    SimpleNamespace(id="c1", function=SimpleNamespace(name="list_payees", arguments="{}"))
+                ],
+            ),
+            SimpleNamespace(content="Here is what I found. " + salad, tool_calls=None),
+        ]
+    )
+    monkeypatch.setattr(llm, "chat", lambda *a, **k: next(replies))
+    turn = client.post("/chat", json={"text": "Who are my payees?"}).json()
+    assert "fairness" not in turn["reply"]
+    assert turn["verifier"] == ["the draft was garbled text, not sentences"]
+    assert "⚠ Hufu check: the agent's draft was replaced" in turn["reply"]
+
+
+def test_a_long_reply_with_sentences_is_not_garbled():
+    from hufu.agent import GARBLED
+
+    bullets = "\n".join(f"- Paid the landlord 4,500 tHKD for rent, tx 0x{'ab' * 32}." for _ in range(12))
+    assert not GARBLED.search(bullets)
+    long_sentence = "I checked your inbox and " + "found nothing urgent " * 9 + "today."
+    assert not GARBLED.search(long_sentence)
+
+
 def test_only_local_hosts_and_the_dashboard_can_write(client):
     assert client.get("/state", headers={"host": "attacker.example"}).status_code == 400
     assert client.get("/state", headers={"host": "[::1]:8000"}).status_code == 200

@@ -66,6 +66,9 @@ NUDGE_DO = (
     "unsafe, say why in one sentence instead."
 )
 RAW_ADDRESS = re.compile(r"0x[0-9a-fA-F]{40}")
+# A small model deep in a long conversation can degenerate into word salad: dozens of words with no
+# punctuation or line break. Real replies have a sentence break long before that.
+GARBLED = re.compile(r"(?:[^\s.,;:!?]+[ \t]+){40}")
 NUDGE_EMPTY = (
     "(Hufu runtime) Your reply was empty. Tell the student in 1-3 short sentences what you did and the result, "
     "with transaction hashes, or use a tool if the request is not done yet."
@@ -170,6 +173,10 @@ class Agent:
                     continue
                 if not reply or (not steps and CLAIMS_ACTION.search(reply)):
                     reply = summarize(steps)
+                if GARBLED.search(reply):  # nothing in it can be trusted: say only what actually happened
+                    return self._finish(
+                        summarize(steps), steps, ["the draft was garbled text, not sentences"], replaced=True
+                    )
                 if self.guard:
                     emit({"type": "verifying"})
                 problems = self.guard.check_reply(reply) if self.guard else []
@@ -214,9 +221,9 @@ class Agent:
     def _finish(self, reply: str, steps: list[Step], problems: list[str], replaced: bool = False) -> Turn:
         if replaced:
             reply += (
-                "\n\n⚠ Hufu check: the agent's draft contained facts no tool result supports ("
+                "\n\n⚠ Hufu check: the agent's draft was replaced with this summary of what actually happened ("
                 + "; ".join(problems)
-                + "), so this is a summary of what actually happened."
+                + ")."
             )
         self.messages.append({"role": "assistant", "content": reply})
         anchor = self.guard.end_turn(reply, problems) if self.guard else None
