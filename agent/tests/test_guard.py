@@ -177,6 +177,27 @@ def test_signed_recurring_amount_needs_no_number_from_the_student(guard, ctx):
 
 
 @pytest.mark.integration
+def test_paying_the_saved_payee_instead_of_the_pasted_address_needs_approval(guard, ctx):
+    """Risk R14 (red-team A16): the student pastes a lookalike and the model quietly pays the real landlord."""
+    landlord = ctx.chain.deployment["payees"]["landlord"]
+    fake = lookalike(landlord)
+    guard.begin_turn(f"Pay 4500 HKD rent to {fake}")
+    r = run(guard, "pay", payee="landlord", token="tHKD", amount=4500)
+    assert r["guard"]["decision"] == "ASK" and r["result"] == "waiting_for_student_approval"
+    assert f"gave the address {fake}" in r["guard"]["reasons"][0]
+    assert "address poisoning" in r["guard"]["reasons"][0]
+    assert balance(ctx) == 10_000
+
+
+@pytest.mark.integration
+def test_naming_the_saved_payee_address_is_not_a_switch(guard, ctx):
+    landlord = ctx.chain.deployment["payees"]["landlord"]
+    guard.begin_turn(f"Pay 4500 HKD rent to {landlord.lower()}")
+    r = run(guard, "pay", payee="landlord", token="tHKD", amount=4500)
+    assert r["guard"]["decision"] == "ALLOW" and r["result"] == "success"
+
+
+@pytest.mark.integration
 def test_payment_nobody_asked_for_needs_approval(guard, ctx):
     guard.begin_turn("what's my balance?")
     r = run(guard, "pay", payee="landlord", token="tHKD", amount=100)
