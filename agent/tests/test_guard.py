@@ -198,6 +198,23 @@ def test_naming_the_saved_payee_address_is_not_a_switch(guard, ctx):
 
 
 @pytest.mark.integration
+def test_retrying_a_payment_that_waits_for_approval_files_it_once(guard, ctx):
+    """Seen while taking README screenshots: the model retried an over-limit payment three times."""
+    guard.begin_turn("send my roommate 800 HKD for utilities")
+    first = run(guard, "pay", payee="roommate", token="tHKD", amount=800)
+    again = run(guard, "pay", payee="roommate", token="tHKD", amount=800.0)
+    filed = run(guard, "request_payment", payee="roommate", token="tHKD", amount=800, reason="utilities")
+    assert first["result"] == again["result"] == filed["result"] == "waiting_for_student_approval"
+    assert first["approval_id"] == again["approval_id"] == filed["approval_id"]
+    assert "Do not file it again" in again["summary"]
+    assert len([r for r in ctx.chain.requests() if r["status"] == "pending"]) == 1
+    guard.begin_turn("and another 800 for last month")  # a new message may file a new request
+    assert (
+        run(guard, "pay", payee="roommate", token="tHKD", amount=800)["approval_id"] != first["approval_id"]
+    )
+
+
+@pytest.mark.integration
 def test_payment_nobody_asked_for_needs_approval(guard, ctx):
     guard.begin_turn("what's my balance?")
     r = run(guard, "pay", payee="landlord", token="tHKD", amount=100)

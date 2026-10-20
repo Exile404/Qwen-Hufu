@@ -132,7 +132,7 @@ Quality checks (also run by [CI](.github/workflows/ci.yml) on every push, except
 | Contract tests (`forge test`) | 97 tests incl. fuzzing, 25 passkey tests and FISCO BCOS millisecond timestamps; `HufuVault` 99% lines (the one uncounted line is inline assembly), 98% branches (`forge coverage --ir-minimum`) |
 | Contract static analysis | `forge lint` clean; Slither: no high or medium findings (11 low and 3 informational, all intentional and justified in the code) |
 | Passkey in a browser | `make e2e-passkey`: register, approve, lock the owner key, unfreeze and cancel in Google Chrome with a virtual WebAuthn authenticator |
-| Agent | `ruff`, `mypy` clean; 94 unit and on-chain tests (`pytest -m "not llm"`) + 9 end-to-end tests with the model |
+| Agent | `ruff`, `mypy` clean; 95 unit and on-chain tests (`pytest -m "not llm"`) + 9 end-to-end tests with the model |
 | Dashboard | `pnpm typecheck`, `pnpm lint`, `pnpm build`; `pnpm audit --prod` and `pip-audit`: no known vulnerabilities |
 | Red team | 40 attacks + 15 normal tasks × 4 configurations, judged on-chain ([results](docs/evidence/redteam/README.md)) |
 

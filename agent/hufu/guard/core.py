@@ -78,6 +78,7 @@ class Guard:
         self._turn_untrusted = False
         self._turn_actions = 0
         self._turn_addresses: list[str] = []
+        self._turn_requests: dict[tuple[str, str, str], dict[str, Any]] = {}
 
     @property
     def chain(self) -> Chain:
@@ -93,6 +94,7 @@ class Guard:
         self._turn_untrusted = False
         self._turn_actions = 0
         self._turn_addresses = ADDRESS.findall(text)
+        self._turn_requests = {}
         self.audit.append("student_message", {"text": text})
 
     def begin_system_turn(self, who: str) -> None:
@@ -104,6 +106,7 @@ class Guard:
         self._turn_untrusted = False
         self._turn_actions = 0
         self._turn_addresses = []
+        self._turn_requests = {}
         self.audit.append("system_run", {"by": who})
 
     def end_system_turn(self) -> dict[str, Any] | None:
@@ -132,11 +135,19 @@ class Guard:
             "tool_call", {"tool": tool.name, "tier": tool.tier, "args": args, **decision.as_dict()}
         )
 
+        key: tuple[str, str, str] | None = None
         if decision.action == "BLOCK":
             result: dict[str, Any] = {
                 "result": "blocked_by_guard",
                 "reasons": decision.reasons,
                 "instruction": "Nothing was done. Do not retry or work around this. Explain the reasons to the student.",
+            }
+        elif (key := self._request_key(tool, args, decision)) and key in self._turn_requests:
+            # The model retrying a payment it already filed this turn: one request per payment, not one per retry.
+            first = self._turn_requests[key]
+            result = {
+                **first,
+                "summary": f"Already waiting for Ayaan's approval (#{first.get('approval_id')}). Do not file it again.",
             }
         elif decision.action == "ASK":
             result = self._escalate(ctx, tool, args, decision)
@@ -146,6 +157,8 @@ class Guard:
             result = run_tool(ctx, tool, args)
             if tool.untrusted_output and self.enabled:
                 result = self._label_untrusted(tool, result)
+        if key and key not in self._turn_requests and result.get("result") == "waiting_for_student_approval":
+            self._turn_requests[key] = result
 
         if self.enabled:
             result["guard"] = decision.as_dict()
@@ -297,6 +310,25 @@ class Guard:
         return Decision("ASK", reasons) if reasons else Decision("ALLOW")
 
     # ------------------------------------------------------------------ helpers
+
+    def _request_key(
+        self, tool: Tool, args: dict[str, Any], decision: Decision
+    ) -> tuple[str, str, str] | None:
+        """Identifies a payment that would be filed for approval: by request_payment, or by pay when the guard asks."""
+        if (
+            tool.name not in ("pay", "request_payment")
+            or decision.action == "BLOCK"
+            or missing_args(tool, args)
+        ):
+            return None
+        if tool.name == "pay" and decision.action != "ASK":
+            return None
+        try:
+            to = self.chain.resolve_payee(str(args["payee"]))["address"].lower()
+            amount = str(Decimal(str(args["amount"])).normalize())
+        except (ValueError, InvalidOperation):
+            return None
+        return (to, str(args["token"]).upper(), amount)
 
     def _switched_from(self, address: str) -> str | None:
         """An address the student wrote in this message that is not a saved payee, when the payment goes to
