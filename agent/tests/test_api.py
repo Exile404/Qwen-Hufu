@@ -1,11 +1,12 @@
 """Dashboard API against the local test chain (no LLM: /chat is covered by the e2e tests)."""
 
+import json
 from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
 
-from hufu import api, seed
+from hufu import api, llm, seed
 from hufu.agent import Agent
 from hufu.autopilot import Autopilot
 from hufu.guard import Guard
@@ -21,7 +22,7 @@ def client(ctx, monkeypatch):
         chain=ctx.chain, ctx=ctx, guard=guard, agent=Agent(ctx, guard=guard), autopilot=Autopilot(ctx, guard)
     )
     monkeypatch.setattr(api, "rt", lambda: runtime)
-    c = TestClient(api.app)
+    c = TestClient(api.app, base_url="http://127.0.0.1")
     c.runtime = runtime
     return c
 
@@ -98,3 +99,34 @@ def test_autopilot_endpoints_and_the_rogue_payment_lab(client, monkeypatch):
     status = client.get("/autopilot").json()
     assert any(a["kind"] == "tripwire" for a in status["alerts"]) and status["plan"]["days"] == 30
     assert client.get("/state").json()["status"]["frozen"] is True
+
+
+def test_chat_stream_sends_each_step_then_the_turn(client, monkeypatch):
+    replies = iter(
+        [
+            SimpleNamespace(
+                content="",
+                tool_calls=[
+                    SimpleNamespace(id="c1", function=SimpleNamespace(name="list_payees", arguments="{}"))
+                ],
+            ),
+            SimpleNamespace(content="Your saved payees are listed above.", tool_calls=None),
+        ]
+    )
+    monkeypatch.setattr(llm, "chat", lambda *a, **k: next(replies))
+    r = client.post("/chat/stream", json={"text": "Who are my payees?"})
+    assert r.status_code == 200 and r.headers["content-type"].startswith("application/x-ndjson")
+    events = [json.loads(line) for line in r.text.splitlines()]
+    assert [e["type"] for e in events] == ["thinking", "call", "step", "thinking", "verifying", "done"]
+    assert events[2]["step"]["tool"] == "list_payees" and events[2]["step"]["tier"] == "T0"
+    assert events[-1]["turn"]["reply"] == "Your saved payees are listed above."
+    assert events[-1]["turn"]["steps"][0]["result"] == events[2]["step"]["result"]
+
+
+def test_only_local_hosts_and_the_dashboard_can_write(client):
+    assert client.get("/state", headers={"host": "attacker.example"}).status_code == 400
+    assert client.get("/state", headers={"host": "[::1]:8000"}).status_code == 200
+    r = client.post("/chat/reset", headers={"origin": "https://attacker.example"})
+    assert r.status_code == 403
+    assert client.post("/chat/reset", headers={"origin": "http://localhost:3000"}).status_code == 200
+    assert client.post("/chat/reset").status_code == 200  # not a browser: no Origin header

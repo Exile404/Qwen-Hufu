@@ -131,6 +131,45 @@ export type TurnView = {
   steps: Step[];
 };
 
+export type ChatEvent =
+  | { type: "thinking" }
+  | { type: "call"; tool: string; arguments: string }
+  | { type: "step"; step: Step }
+  | { type: "verifying" }
+  | { type: "nudge"; reason: "empty" | "not_done" | "unverified" }
+  | { type: "done"; turn: TurnView }
+  | { type: "error"; detail: string };
+
+/** POST /chat/stream: reports each progress event as the agent works and resolves with the finished turn. */
+export async function chatStream(text: string, onEvent: (event: ChatEvent) => void): Promise<TurnView> {
+  const res = await fetch(`${API_URL}/chat/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok || !res.body) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.detail ?? `${res.status} ${res.statusText}`);
+  }
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    buffer += value ?? "";
+    let nl: number;
+    while ((nl = buffer.indexOf("\n")) >= 0) {
+      const line = buffer.slice(0, nl).trim();
+      buffer = buffer.slice(nl + 1);
+      if (!line) continue;
+      const event = JSON.parse(line) as ChatEvent;
+      if (event.type === "done") return event.turn;
+      if (event.type === "error") throw new Error(event.detail);
+      onEvent(event);
+    }
+    if (done) throw new Error("The connection closed before Hufu finished.");
+  }
+}
+
 export type Email = {
   id: number;
   from: string;

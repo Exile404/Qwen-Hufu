@@ -7,7 +7,7 @@ import { DecisionBadge, RichText, TxLink } from "@/components/hufu/bits";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { post, type Step, type TurnView } from "@/lib/api";
+import { chatStream, post, type ChatEvent, type Step, type TurnView } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type Message = { role: "student"; text: string } | { role: "hufu"; turn: TurnView } | { role: "error"; text: string };
@@ -25,13 +25,88 @@ const SUGGESTIONS = [
 
 const ARG_KEYS = ["payee", "amount", "token", "from_token", "every_days", "first_due", "label", "address"];
 
+const argText = (args: Record<string, unknown>) =>
+  ARG_KEYS.filter((k) => args[k] !== undefined && args[k] !== "")
+    .map((k) => `${k}=${String(args[k])}`)
+    .join(", ");
+
+// What the student sees while a turn runs: each finished step, the call in flight, and what Hufu is doing.
+type Live = {
+  steps: Step[];
+  call: { tool: string; args: Record<string, unknown> } | null;
+  phase: "thinking" | "verifying" | "rewrite" | "nudge";
+};
+
+const ACTING = new Set([
+  "pay",
+  "request_payment",
+  "pay_due_mandates",
+  "propose_mandate",
+  "propose_new_payee",
+  "convert_currency",
+  "freeze_wallet",
+]);
+
+function liveStatus(live: Live): string {
+  if (live.call) {
+    if (live.call.tool === "read_inbox") return "Reading the inbox and rating each email for scams…";
+    if (ACTING.has(live.call.tool)) return "The guard is checking it, then the vault…";
+    return "Looking it up…";
+  }
+  if (live.phase === "verifying") return "Checking the reply against what actually happened…";
+  if (live.phase === "rewrite") return "The draft stated something no tool result supports; asking for a rewrite…";
+  if (live.phase === "nudge") return "Asking the agent to finish what you asked…";
+  return live.steps.length ? "Deciding the next step…" : "Reading your request…";
+}
+
+function nextLive(live: Live, event: ChatEvent): Live {
+  switch (event.type) {
+    case "thinking":
+      return { ...live, call: null, phase: "thinking" };
+    case "call": {
+      let args: Record<string, unknown> = {};
+      try {
+        args = JSON.parse(event.arguments || "{}");
+      } catch {}
+      return { ...live, call: { tool: event.tool, args } };
+    }
+    case "step":
+      return { ...live, steps: [...live.steps, event.step], call: null };
+    case "verifying":
+      return { ...live, call: null, phase: "verifying" };
+    case "nudge":
+      return { ...live, phase: event.reason === "unverified" ? "rewrite" : "nudge" };
+    default:
+      return live;
+  }
+}
+
+function LiveTurn({ live, elapsed, explorer }: { live: Live; elapsed: number; explorer: string | null }) {
+  return (
+    <div className="space-y-1">
+      {live.steps.map((s, i) => (
+        <StepRow key={i} step={s} explorer={explorer} />
+      ))}
+      {live.call && (
+        <div className="flex items-center gap-2 rounded-md border border-dashed px-2.5 py-1.5 text-xs">
+          <LoaderCircle className="size-3 animate-spin text-muted-foreground" />
+          <span className="font-mono font-medium">{live.call.tool}</span>
+          <span className="truncate text-muted-foreground">{argText(live.call.args)}</span>
+        </div>
+      )}
+      <p className="flex items-center gap-2 pt-1 text-sm text-muted-foreground">
+        <LoaderCircle className="size-4 animate-spin" /> {liveStatus(live)}
+        <span className="ml-auto font-mono text-xs tabular-nums">{elapsed} s</span>
+      </p>
+    </div>
+  );
+}
+
 function StepRow({ step, explorer }: { step: Step; explorer: string | null }) {
   const r = step.result;
   const g = r.guard;
   const status = r.result ?? r.status ?? "ok";
-  const args = ARG_KEYS.filter((k) => step.args[k] !== undefined && step.args[k] !== "")
-    .map((k) => `${k}=${String(step.args[k])}`)
-    .join(", ");
+  const args = argText(step.args);
   const quiet = step.tier === "T0" && (!g || g.decision === "ALLOW");
   const risky = (r.emails ?? []).filter((e) => e.security && e.security.risk !== "low");
 
@@ -117,11 +192,20 @@ export function ChatPanel({ explorer, onChange }: { explorer: string | null; onC
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [live, setLive] = useState<Live | null>(null);
+  const [elapsed, setElapsed] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, busy]);
+  }, [messages, live]);
+
+  useEffect(() => {
+    if (!busy) return;
+    const start = Date.now();
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [busy]);
 
   async function send(value: string) {
     const t = value.trim();
@@ -129,12 +213,18 @@ export function ChatPanel({ explorer, onChange }: { explorer: string | null; onC
     setText("");
     setMessages((m) => [...m, { role: "student", text: t }]);
     setBusy(true);
+    setElapsed(0);
+    setLive({ steps: [], call: null, phase: "thinking" });
     try {
-      const turn = await post<TurnView>("/chat", { text: t });
+      const turn = await chatStream(t, (event) => {
+        setLive((l) => (l ? nextLive(l, event) : l));
+        if (event.type === "step" && event.step.tier !== "T0") onChange(); // balances move as payments land
+      });
       setMessages((m) => [...m, { role: "hufu", turn }]);
     } catch (e) {
       setMessages((m) => [...m, { role: "error", text: (e as Error).message }]);
     } finally {
+      setLive(null);
       setBusy(false);
       onChange();
     }
@@ -150,7 +240,7 @@ export function ChatPanel({ explorer, onChange }: { explorer: string | null; onC
       <CardHeader>
         <CardTitle>Talk to Hufu</CardTitle>
         <CardDescription>
-          Local Qwen3.5 9B. Every action passes the guard, then the vault. Most replies take 5–30 s; reading the inbox can take a minute.
+          Local Qwen3.5 9B. Every action passes the guard, then the vault. You see each step as it runs; most replies take 5–30 s, reading the inbox up to a minute.
         </CardDescription>
         <CardAction>
           <Button variant="ghost" size="sm" onClick={reset} disabled={busy}>
@@ -189,11 +279,7 @@ export function ChatPanel({ explorer, onChange }: { explorer: string | null; onC
               </p>
             ),
           )}
-          {busy && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <LoaderCircle className="size-4 animate-spin" /> Hufu is working…
-            </p>
-          )}
+          {live && <LiveTurn live={live} elapsed={elapsed} explorer={explorer} />}
           <div ref={endRef} />
         </div>
         {messages.length > 0 && (

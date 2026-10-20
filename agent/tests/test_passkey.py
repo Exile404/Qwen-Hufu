@@ -98,7 +98,7 @@ def client(ctx, monkeypatch):
         chain=ctx.chain, ctx=ctx, guard=guard, agent=Agent(ctx, guard=guard), autopilot=Autopilot(ctx, guard)
     )
     monkeypatch.setattr(api, "rt", lambda: runtime)
-    c = TestClient(api.app)
+    c = TestClient(api.app, base_url="http://127.0.0.1")
     c.runtime = runtime
     return c
 

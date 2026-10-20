@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8000
     web_origin: str = "http://localhost:3000"
+    allowed_hosts: list[str] = ["localhost", "127.0.0.1", "[::1]"]  # Host headers the API answers to
     db_path: Path = REPO_ROOT / "agent" / "data" / "hufu.db"
 
     @property

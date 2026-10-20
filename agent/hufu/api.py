@@ -5,16 +5,19 @@ automatically when the contracts are redeployed. A lock serialises anything that
 autopilot's background runs.
 """
 
+import json
 import logging
+import queue
 import threading
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from web3 import Web3
 
@@ -41,12 +44,26 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Hufu API", version=__version__, lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[get_settings().web_origin, "http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+ORIGINS = [get_settings().web_origin, "http://localhost:3000", "http://127.0.0.1:3000"]
+app.add_middleware(CORSMiddleware, allow_origins=ORIGINS, allow_methods=["*"], allow_headers=["*"])
+READ_ONLY = {"GET", "HEAD", "OPTIONS"}
+
+
+def _hostname(host: str) -> str:
+    return host[: host.find("]") + 1] if host.startswith("[") else host.split(":")[0]
+
+
+@app.middleware("http")
+async def local_dashboard_only(request: Request, call_next: Any) -> Any:
+    """The API is the student's own and runs on their device. It answers only to a local Host header,
+    so a web page cannot reach it through DNS rebinding, and it refuses any write that a browser sends
+    from a page other than the dashboard, so another site cannot make it pay, approve or chat."""
+    if _hostname(request.headers.get("host", "")) not in get_settings().allowed_hosts:
+        return JSONResponse(status_code=400, content={"detail": "unexpected Host header"})
+    origin = request.headers.get("origin")
+    if request.method not in READ_ONLY and origin is not None and origin not in ORIGINS:
+        return JSONResponse(status_code=403, content={"detail": f"writes are not accepted from {origin}"})
+    return await call_next(request)
 
 
 @app.exception_handler(student.PasskeyRequired)
@@ -265,6 +282,34 @@ class ChatIn(BaseModel):
 def chat(body: ChatIn) -> dict:
     with _lock:
         return turn_view(rt().agent.chat(body.text))
+
+
+@app.post("/chat/stream")
+def chat_stream(body: ChatIn) -> StreamingResponse:
+    """The same turn as /chat, as newline-delimited JSON: progress events while the agent works
+    (thinking, call, step, verifying, nudge), then {"type": "done", "turn": ...} or {"type": "error"}."""
+    r = rt()  # a missing chain is a plain 503, before the stream starts
+    events: queue.Queue[dict[str, Any] | None] = queue.Queue()
+
+    def work() -> None:
+        try:
+            with _lock:
+                turn = r.agent.chat(body.text, on_event=events.put)
+            events.put({"type": "done", "turn": turn_view(turn)})
+        except Exception as e:  # the stream has started, so the error goes in it
+            log.exception("chat turn failed")
+            events.put({"type": "error", "detail": f"{type(e).__name__}: {e}"})
+        finally:
+            events.put(None)
+
+    def lines() -> Iterator[str]:
+        threading.Thread(target=work, name="chat", daemon=True).start()
+        while (event := events.get()) is not None:
+            yield json.dumps(jsonable_encoder(event), ensure_ascii=False) + "\n"
+
+    return StreamingResponse(
+        lines(), media_type="application/x-ndjson", headers={"Cache-Control": "no-store"}
+    )
 
 
 @app.post("/chat/reset")

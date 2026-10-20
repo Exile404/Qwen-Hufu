@@ -22,7 +22,7 @@ def test_llm_emits_tool_call():
 @pytest.mark.integration
 @pytest.mark.llm
 def test_health_endpoint():
-    resp = TestClient(app).get("/health")
+    resp = TestClient(app, base_url="http://127.0.0.1").get("/health")
     assert resp.status_code == 200
     body = resp.json()
     assert body["llm"]["ok"], body
