@@ -66,6 +66,8 @@ NUDGE_DO = (
     "unsafe, say why in one sentence instead."
 )
 RAW_ADDRESS = re.compile(r"0x[0-9a-fA-F]{40}")
+# Reasoning that leaks into the reply (a stray </think> was seen on screen): never shown to the student.
+THINK = re.compile(r"<think>.*?</think>|</?think>", re.IGNORECASE | re.DOTALL)
 # A small model deep in a long conversation can degenerate into word salad: dozens of words with no
 # punctuation or line break. Real replies have a sentence break long before that.
 GARBLED = re.compile(r"(?:[^\s.,;:!?]+[ \t]+){40}")
@@ -157,7 +159,7 @@ class Agent:
             msg = llm.chat(self.messages, tools=schemas())
             calls = msg.tool_calls or []
             if not calls:
-                reply = (msg.content or "").strip()
+                reply = THINK.sub("", msg.content or "").strip()
                 nudge = None
                 if not reply:
                     nudge = NUDGE_EMPTY

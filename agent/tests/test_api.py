@@ -145,6 +145,20 @@ def test_garbled_reply_is_replaced_by_what_actually_happened(client, monkeypatch
     assert "⚠ Hufu check: the agent's draft was replaced" in turn["reply"]
 
 
+def test_reasoning_tags_never_reach_the_student(client, monkeypatch):
+    replies = iter(
+        [
+            SimpleNamespace(
+                content="<think>check the payees</think>Your payees are listed above.\n</think>",
+                tool_calls=None,
+            )
+        ]
+    )
+    monkeypatch.setattr(llm, "chat", lambda *a, **k: next(replies))
+    turn = client.post("/chat", json={"text": "Who are my payees?"}).json()
+    assert turn["reply"] == "Your payees are listed above."
+
+
 def test_a_long_reply_with_sentences_is_not_garbled():
     from hufu.agent import GARBLED
 

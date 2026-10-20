@@ -421,10 +421,10 @@ TOOLS: list[Tool] = [
             "currency": {
                 "type": "string",
                 "enum": ["BDT", "HKD", "USD"],
-                "description": "Currency of the amount",
+                "description": "Currency of the amount, as the student said it (500 USD means USD)",
             },
         },
-        ["direction", "amount"],
+        ["direction", "amount", "currency"],  # required: a bare 500 was once read as 500 BDT instead of USD
     ),
     Tool(
         "quote_conversion",
