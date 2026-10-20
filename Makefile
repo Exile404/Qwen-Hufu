@@ -4,7 +4,7 @@ export PATH := $(HOME)/.foundry/bin:$(PATH)
 OZ_VERSION := v5.6.1
 FORGE_STD_VERSION := v1.17.0
 
-.PHONY: help setup model doctor chain chain-reset deploy-local show-local testnet-keys testnet-balance deploy-testnet verify-testnet testnet-topup sanctions-update api web cli redteam e2e-passkey evidence test test-contracts test-agent test-integration fmt
+.PHONY: help setup model doctor chain chain-reset deploy-local show-local testnet-keys testnet-balance deploy-testnet verify-testnet testnet-topup fisco-chain fisco-stop deploy-fisco sanctions-update api web cli redteam e2e-passkey evidence test test-contracts test-agent test-integration fmt
 
 help: ## List targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -82,6 +82,17 @@ testnet-topup: ## Mint test tokens into the Sepolia vault for a fresh demo (10,0
 	vault=$$(jq -r .vault $$d) && \
 	cast send $$(jq -r .tHKD $$d) "mint(address,uint256)" $$vault 10000000000 --private-key $$OWNER_PRIVATE_KEY --rpc-url $$RPC_URL --json | jq -r '"tHKD +10,000: " + .transactionHash + " status " + .status' && \
 	cast send $$(jq -r .tUSD $$d) "mint(address,uint256)" $$vault 800000000 --private-key $$OWNER_PRIVATE_KEY --rpc-url $$RPC_URL --json | jq -r '"tUSD +800:    " + .transactionHash + " status " + .status'
+
+fisco-chain: ## Start a one-node FISCO BCOS chain (WeBank) with its Web3 RPC on :8548 (first run downloads ~300 MB into .fisco/)
+	@scripts/fisco-chain.sh
+
+fisco-stop: ## Stop the FISCO BCOS node
+	@bash .fisco/nodes/127.0.0.1/stop_all.sh
+
+deploy-fisco: ## Deploy + seed the contracts on FISCO BCOS (needs `make fisco-chain`); then HUFU_ENV=fisco make evidence / api
+	cd contracts && set -a && . ../.env && . ../.env.fisco && set +a && \
+		forge script script/Deploy.s.sol:Deploy --rpc-url $$RPC_URL --broadcast --legacy --with-gas-price 0 --slow -q
+	@echo "Deployed to FISCO BCOS. Run the API with: HUFU_ENV=fisco make api"
 
 sanctions-update: ## Fetch the OFAC SDN list's Ethereum addresses for counterparty screening
 	cd agent && uv run python -m hufu.sanctions_update

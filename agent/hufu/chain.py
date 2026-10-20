@@ -144,6 +144,9 @@ def _batch(w3: Web3, calls: list[Any]) -> list[Any]:
     Items are contract function calls, or zero-argument callables for `w3.eth` reads."""
     if not calls:
         return []
+    if len(calls) == 1:  # some nodes (FISCO BCOS) answer a one-item batch with a bare object
+        c = calls[0]
+        return [c.call() if hasattr(c, "call") else c()]
     with w3.batch_requests() as batch:
         for c in calls:
             batch.add(c if hasattr(c, "call") else c())
@@ -216,7 +219,9 @@ class Chain:
     def payees(self) -> list[dict[str, Any]]:
         """Current allowlist, rebuilt from PayeeSet events (the chain is the source of truth)."""
         latest: dict[str, dict[str, Any]] = {}
-        for ev in self.vault.events.PayeeSet().get_logs(from_block=self.deployment["deployBlock"]):
+        for ev in self.vault.events.PayeeSet().get_logs(
+            from_block=self.deployment["deployBlock"], to_block="latest"
+        ):
             payee = to_checksum_address(ev["args"]["payee"])
             latest[payee] = {"allowed": ev["args"]["allowed"], "label": ev["args"]["label"]}
         v = self.vault.functions
@@ -417,7 +422,9 @@ class Chain:
         x, y = int.from_bytes(x, "big"), int.from_bytes(y, "big")
         credential_id = None
         if x or y:
-            logs = self.vault.events.PasskeySet().get_logs(from_block=self.deployment["deployBlock"])
+            logs = self.vault.events.PasskeySet().get_logs(
+                from_block=self.deployment["deployBlock"], to_block="latest"
+            )
             credential_id = b64url(logs[-1]["args"]["credentialId"]) if logs else None
         return {
             "registered": bool(x or y),
@@ -464,7 +471,7 @@ class Chain:
             return memo_lookup("0x" + h.hex()) if memo_lookup else None
 
         e = self.vault.events
-        for ev in e.Paid().get_logs(from_block=start):
+        for ev in e.Paid().get_logs(from_block=start, to_block="latest"):
             a = ev["args"]
             add(
                 ev,
@@ -476,7 +483,7 @@ class Chain:
                     "memo": memo(a["memoHash"]),
                 },
             )
-        for ev in e.MandateExecuted().get_logs(from_block=start):
+        for ev in e.MandateExecuted().get_logs(from_block=start, to_block="latest"):
             a = ev["args"]
             add(
                 ev,
@@ -488,7 +495,7 @@ class Chain:
                     "token": self.symbol(a["token"]),
                 },
             )
-        for ev in e.Swapped().get_logs(from_block=start):
+        for ev in e.Swapped().get_logs(from_block=start, to_block="latest"):
             a = ev["args"]
             add(
                 ev,
@@ -498,7 +505,7 @@ class Chain:
                     "to": f"{round(from_units(a['amountOut']), 2)} {self.symbol(a['tokenOut'])}",
                 },
             )
-        for ev in e.PaymentRequested().get_logs(from_block=start):
+        for ev in e.PaymentRequested().get_logs(from_block=start, to_block="latest"):
             a = ev["args"]
             add(
                 ev,
@@ -511,16 +518,16 @@ class Chain:
                     "memo": memo(a["memoHash"]),
                 },
             )
-        for ev in e.RequestApproved().get_logs(from_block=start):
+        for ev in e.RequestApproved().get_logs(from_block=start, to_block="latest"):
             add(ev, {"kind": "request_approved", "request_id": ev["args"]["id"]})
-        for ev in e.RequestRejected().get_logs(from_block=start):
+        for ev in e.RequestRejected().get_logs(from_block=start, to_block="latest"):
             add(ev, {"kind": "request_rejected", "request_id": ev["args"]["id"]})
-        for ev in e.MandateCreated().get_logs(from_block=start):
+        for ev in e.MandateCreated().get_logs(from_block=start, to_block="latest"):
             a = ev["args"]
             add(ev, {"kind": "mandate_created", "mandate_id": a["id"], "label": a["label"]})
-        for ev in e.PasskeySet().get_logs(from_block=start):
+        for ev in e.PasskeySet().get_logs(from_block=start, to_block="latest"):
             add(ev, {"kind": "passkey_set" if any(ev["args"]["x"]) else "passkey_removed"})
-        for ev in e.PasskeyUsed().get_logs(from_block=start):
+        for ev in e.PasskeyUsed().get_logs(from_block=start, to_block="latest"):
             a = ev["args"]
             add(
                 ev,
@@ -529,11 +536,11 @@ class Chain:
                     "action": self._selectors.get(a["action"], "0x" + a["action"].hex()),
                 },
             )
-        for ev in e.OwnerKeyRetired().get_logs(from_block=start):
+        for ev in e.OwnerKeyRetired().get_logs(from_block=start, to_block="latest"):
             add(ev, {"kind": "owner_key_locked" if ev["args"]["retired"] else "owner_key_unlocked"})
-        for ev in e.Paused().get_logs(from_block=start):
+        for ev in e.Paused().get_logs(from_block=start, to_block="latest"):
             add(ev, {"kind": "frozen", "by": ev["args"]["by"]})
-        for ev in e.Unpaused().get_logs(from_block=start):
+        for ev in e.Unpaused().get_logs(from_block=start, to_block="latest"):
             add(ev, {"kind": "unfrozen", "by": ev["args"]["by"]})
 
         rows.sort(key=lambda r: (r[0], r[1]), reverse=True)

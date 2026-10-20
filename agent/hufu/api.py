@@ -191,7 +191,9 @@ def huitong_quote(direction: str = "family_to_me", amount: float = 500, currency
 @app.get("/audit")
 def audit(limit: int = 30) -> dict:
     r = rt()
-    anchors = r.chain.vault.events.AuditAnchored().get_logs(from_block=r.chain.deployment["deployBlock"])
+    anchors = r.chain.vault.events.AuditAnchored().get_logs(
+        from_block=r.chain.deployment["deployBlock"], to_block="latest"
+    )
     last = anchors[-1] if anchors else None
     head = "0x" + last["args"]["head"].hex() if last else None
     return {

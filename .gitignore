@@ -6,6 +6,7 @@
 
 # local chain state
 .anvil/
+.fisco/
 
 # contracts
 contracts/out/
@@ -13,6 +14,8 @@ contracts/cache/
 contracts/lib/
 contracts/broadcast/*/31[0-9][0-9][0-9]/
 contracts/deployments/31[0-9][0-9][0-9].json
+contracts/deployments/20200.json
+contracts/broadcast/*/20200/
 
 # agent
 agent/.venv/

@@ -23,6 +23,7 @@ from hufu.store import Store
 from hufu.tools import TOOLS_BY_NAME, Context
 
 OUT = REPO_ROOT / "docs" / "evidence"
+FISCO_WEB3_CHAIN_ID = 20200  # FISCO BCOS's default Web3 chain id (make fisco-chain)
 
 
 class Recorder:
@@ -229,6 +230,15 @@ def write(rows: list[dict[str, Any]]) -> None:
         "In steps 12 a software passkey signs the student's half: the same WebAuthn format a phone returns to",
         "the browser. The vault verifies each signature on-chain; the dashboard uses the student's real passkey.",
         "",
+    ]
+    if s.chain_id == FISCO_WEB3_CHAIN_ID:
+        lines += [
+            "**FISCO BCOS:** a local one-node FISCO BCOS chain (WeBank's open consortium chain), driven through",
+            "its Ethereum-compatible Web3 RPC with the same contracts and agent. It has no public explorer;",
+            "reproduce with `make fisco-chain`, `make deploy-fisco`, `HUFU_ENV=fisco make evidence`.",
+            "",
+        ]
+    lines += [
         "| Task | Action | Guard | Result | Transactions |",
         "|---|---|---|---|---|",
     ]
