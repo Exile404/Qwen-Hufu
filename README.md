@@ -10,6 +10,7 @@ Hufu is an AI agent wallet for international students. It pays rent, tuition and
 
 | | |
 |---|---|
+| Run it | `docker compose up`, then open http://localhost:3000 ([details](#run-with-docker-one-command)) |
 | Technical documentation | [docs/TECHNICAL.md](docs/TECHNICAL.md) |
 | Security self-assessment | [docs/SECURITY_SELF_ASSESSMENT.md](docs/SECURITY_SELF_ASSESSMENT.md) |
 | Compliance mapping | [docs/COMPLIANCE.md](docs/COMPLIANCE.md): HK, mainland China, Bangladesh and FATF rules mapped to Hufu's controls, with sources |
@@ -56,6 +57,30 @@ web/         Next.js 16 + shadcn/ui dashboard
 redteam/     scenarios.yaml: 40 attacks in 8 categories + 15 benign tasks
 docs/        technical doc, security self-assessment, pitch, evidence
 ```
+
+## Run with Docker (one command)
+
+Needs only [Docker](https://docs.docker.com/get-docker/) with Compose.
+
+```bash
+docker compose up
+```
+
+Then open **http://localhost:3000**. Compose starts a private test chain, deploys and seeds the vault (10,000 tHKD and 800 tUSD of test tokens, four saved payees, a recurring phone bill), and runs the agent API and the dashboard.
+- The first start builds the images (a few minutes). It also downloads the local model, Qwen3.5 9B (about 6.6 GB), into a Docker volume. Follow the download with `docker compose logs -f model`.
+- Everything except the chat works before the model arrives: the passkey, approvals, the attack lab, the autopilot, compliance and the audit log.
+- `docker compose down` stops it; add `-v` to also delete the downloaded model.
+
+Running the model:
+- **NVIDIA GPU** (needs the NVIDIA Container Toolkit): `docker compose -f compose.yaml -f compose.gpu.yaml up`. Replies take 5–30 s.
+- **CPU only:** works, but each reply can take minutes, and Docker needs about 10 GB of memory.
+- **Ollama already installed on your machine** (fastest on a Mac): run `ollama pull qwen3.5:9b && ollama create hufu-qwen -f agent/Modelfile`, make Ollama listen on all interfaces (`OLLAMA_HOST=0.0.0.0 ollama serve`; on a Mac, Docker Desktop reaches it without this), then:
+
+  ```bash
+  HUFU_LLM_BASE_URL=http://host.docker.internal:11434/v1 docker compose up chain deploy api web
+  ```
+
+Ports 3000 and 8000 busy? Use `HUFU_WEB_PORT=3010 HUFU_API_PORT=8010 docker compose up`. The chain uses Foundry's public Anvil development keys, which are fine for a private test chain only.
 
 ## Run it locally
 

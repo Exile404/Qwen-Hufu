@@ -88,3 +88,19 @@ jobs:
       - run: pnpm lint
       - run: pnpm build
       - run: pnpm audit --prod
+
+  docker:
+    name: Docker (compose, no model)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker compose build
+      - name: Start the chain, the deploy step, the API and the dashboard
+        run: docker compose up -d --wait chain api web
+      - name: The seeded vault and the dashboard are served
+        run: |
+          curl -fsS http://localhost:8000/state | python3 -c "import json, sys; d = json.load(sys.stdin); assert d['status']['tokens']['tHKD']['balance'] == 10000, d"
+          curl -fsS -o /dev/null http://localhost:3000/
+      - if: failure()
+        run: docker compose logs
+      - run: docker compose down -v

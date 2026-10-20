@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from dataclasses import asdict
 from typing import Any
 
+import openai
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
@@ -278,10 +279,26 @@ class ChatIn(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
 
 
+def model_unavailable(e: Exception) -> str | None:
+    """Plain words for the two ways the model is not there yet (e.g. Docker still downloading it)."""
+    s = get_settings()
+    if isinstance(e, openai.NotFoundError):
+        return (
+            f"The model {s.llm_model} isn't available yet. With Docker it is still downloading: "
+            "follow it with `docker compose logs -f model`."
+        )
+    if isinstance(e, openai.APIConnectionError):
+        return f"Can't reach the model at {s.llm_base_url}. Start Ollama, or check LLM_BASE_URL."
+    return None
+
+
 @app.post("/chat")
 def chat(body: ChatIn) -> dict:
     with _lock:
-        return turn_view(rt().agent.chat(body.text))
+        try:
+            return turn_view(rt().agent.chat(body.text))
+        except (openai.NotFoundError, openai.APIConnectionError) as e:
+            raise HTTPException(503, model_unavailable(e)) from e
 
 
 @app.post("/chat/stream")
@@ -297,8 +314,10 @@ def chat_stream(body: ChatIn) -> StreamingResponse:
                 turn = r.agent.chat(body.text, on_event=events.put)
             events.put({"type": "done", "turn": turn_view(turn)})
         except Exception as e:  # the stream has started, so the error goes in it
-            log.exception("chat turn failed")
-            events.put({"type": "error", "detail": f"{type(e).__name__}: {e}"})
+            if not (detail := model_unavailable(e)):
+                log.exception("chat turn failed")
+                detail = f"{type(e).__name__}: {e}"
+            events.put({"type": "error", "detail": detail})
         finally:
             events.put(None)
 

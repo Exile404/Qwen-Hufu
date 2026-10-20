@@ -1,0 +1,11 @@
+# Run the model on an NVIDIA GPU (needs the NVIDIA Container Toolkit):
+#   docker compose -f compose.yaml -f compose.gpu.yaml up
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

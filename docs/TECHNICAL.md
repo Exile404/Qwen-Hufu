@@ -254,6 +254,8 @@ What we learned:
 
 ## 7. Reproducing
 
+With Docker, one command starts the chain, deploys and seeds the vault, and runs the API, the dashboard and the local model (downloaded on first start): `docker compose up`, then open http://localhost:3000 (README, "Run with Docker"). Without Docker:
+
 ```bash
 make setup          # deps, contract libs, local model, .env
 make chain          # local chain (state persists across restarts)

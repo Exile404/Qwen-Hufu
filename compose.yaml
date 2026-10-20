@@ -1,0 +1,110 @@
+# Hufu in one command:   docker compose up
+# Then open http://localhost:3000. The first start builds the images (a few minutes) and downloads the
+# local model (Qwen3.5 9B, about 6.6 GB) in the background; everything except the chat works before it
+# arrives. Follow the download with:  docker compose logs -f model
+#
+# NVIDIA GPU:          docker compose -f compose.yaml -f compose.gpu.yaml up
+# Ollama already on this machine (fastest on a Mac):  see "Run with Docker" in the README.
+#
+# A private test chain with test tokens only. The keys below are Foundry's public Anvil development
+# keys: never use them on a real network.
+
+name: hufu
+
+x-dev-keys: &dev-keys
+  OWNER_PRIVATE_KEY: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+  AGENT_PRIVATE_KEY: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+  GUARDIAN_PRIVATE_KEY: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9da804cc0e5f2"
+
+x-contracts: &contracts
+  build: { context: ., target: contracts }
+  image: hufu-contracts
+
+services:
+  chain:
+    <<: *contracts
+    entrypoint: ["anvil", "--host", "0.0.0.0", "--chain-id", "31337"]
+    healthcheck:
+      test: ["CMD", "cast", "block-number", "--rpc-url", "http://127.0.0.1:8545"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  deploy: # deploys and seeds the vault, tokens and FX pool, then exits
+    <<: *contracts
+    depends_on:
+      chain: { condition: service_healthy }
+    working_dir: /hufu/contracts
+    environment:
+      <<: *dev-keys
+    entrypoint: ["forge", "script", "script/Deploy.s.sol:Deploy", "--rpc-url", "http://chain:8545", "--broadcast", "-q"]
+    volumes:
+      - deployments:/hufu/contracts/deployments
+
+  ollama:
+    image: ollama/ollama:0.30.11
+    environment:
+      OLLAMA_KEEP_ALIVE: 1h # keep the model loaded between chats (a cold start takes up to a minute)
+    volumes:
+      - ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 3s
+      timeout: 10s
+      retries: 40
+
+  model: # downloads the model once (kept in the ollama volume), loads it, then exits
+    image: ollama/ollama:0.30.11
+    depends_on:
+      ollama: { condition: service_healthy }
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    volumes:
+      - ./agent/Modelfile:/Modelfile:ro
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        ollama pull qwen3.5:9b && ollama create hufu-qwen -f /Modelfile &&
+        echo "Loading the model..." && ollama run hufu-qwen "Reply with OK." > /dev/null 2>&1 &&
+        echo "Model ready. Chat with Hufu at http://localhost:${HUFU_WEB_PORT:-3000}"
+
+  api:
+    build: { context: ., target: api }
+    image: hufu-api
+    depends_on:
+      deploy: { condition: service_completed_successfully }
+    environment:
+      <<: *dev-keys
+      RPC_URL: http://chain:8545
+      CHAIN_ID: "31337"
+      LLM_BASE_URL: ${HUFU_LLM_BASE_URL:-http://ollama:11434/v1}
+      LLM_MODEL: ${HUFU_LLM_MODEL:-hufu-qwen}
+      WEB_ORIGIN: http://localhost:${HUFU_WEB_PORT:-3000}
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - deployments:/hufu/contracts/deployments:ro
+    ports:
+      - ${HUFU_API_PORT:-8000}:8000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/state', timeout=5)"]
+      interval: 3s
+      timeout: 10s
+      retries: 40
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:${HUFU_API_PORT:-8000}
+    image: hufu-web
+    depends_on:
+      api: { condition: service_healthy }
+    ports:
+      - ${HUFU_WEB_PORT:-3000}:3000
+
+volumes:
+  deployments:
+  ollama:

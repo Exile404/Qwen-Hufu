@@ -3,6 +3,8 @@
 import json
 from types import SimpleNamespace
 
+import httpx
+import openai
 import pytest
 from fastapi.testclient import TestClient
 
@@ -150,6 +152,19 @@ def test_a_long_reply_with_sentences_is_not_garbled():
     assert not GARBLED.search(bullets)
     long_sentence = "I checked your inbox and " + "found nothing urgent " * 9 + "today."
     assert not GARBLED.search(long_sentence)
+
+
+def test_chat_says_plainly_when_the_model_is_not_there(client, monkeypatch):
+    def unreachable(*a, **k):
+        raise openai.APIConnectionError(
+            request=httpx.Request("POST", "http://ollama:11434/v1/chat/completions")
+        )
+
+    monkeypatch.setattr(llm, "chat", unreachable)
+    events = [json.loads(line) for line in client.post("/chat/stream", json={"text": "hi"}).text.splitlines()]
+    assert events[-1]["type"] == "error" and events[-1]["detail"].startswith("Can't reach the model")
+    r = client.post("/chat", json={"text": "hi"})
+    assert r.status_code == 503 and "Can't reach the model" in r.json()["detail"]
 
 
 def test_only_local_hosts_and_the_dashboard_can_write(client):
