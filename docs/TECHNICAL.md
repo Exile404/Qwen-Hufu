@@ -120,7 +120,7 @@ Every final reply is checked: each number ≥ 10 must appear in a tool result or
 
 ### 4.6 Hash-chained audit with on-chain anchoring (`guard/audit.py`)
 
-Each entry stores `hash = keccak256(prev ‖ ts ‖ kind ‖ data)`. Editing or deleting any entry breaks every later hash (`verify()` reports the first broken id). After every turn that moved money, the head is committed with `HufuVault.anchorAudit(head)`, which timestamps it on-chain; the dashboard checks that the latest on-chain head exists in the local log.
+Each entry stores `hash = keccak256(prev ‖ ts ‖ kind ‖ data)`. Editing or deleting any entry breaks every later hash (`verify()` reports the first broken id). After every turn that moved money, the head is committed with `HufuVault.anchorAudit(head)`, which timestamps it on-chain; the dashboard checks that the latest on-chain head exists in the local log. The API's request threads and the autopilot share one local database; every call to it holds one lock, and reading the chain's head and appending the next entry happen as one step, so concurrent writers cannot fork the chain (`test_store_and_audit_are_safe_across_threads`).
 
 ### 4.7 Deterministic money arithmetic
 
@@ -202,7 +202,7 @@ See [SECURITY_SELF_ASSESSMENT.md](SECURITY_SELF_ASSESSMENT.md) for the threat mo
 
   `HufuVault` coverage: 99% of lines (the one line not counted is inline assembly) and 98% of branches (`forge coverage --ir-minimum`). Static analysis: `forge lint` is clean. Slither reports no high or medium findings: 11 low (zero addresses accepted on purpose to revoke a role; timestamp comparisons for day-scale schedules, the 5-minute passkey deadline and the millisecond check in `_now()`) and 3 informational (the passkey self-call and its error pass-through; a mock's interface).
 - **Code quality:** `ruff` and `mypy` clean; CI (`.github/workflows/ci.yml`) runs the contract, agent and dashboard checks on every push; `pip-audit` and `pnpm audit --prod` report no known vulnerabilities.
-- **Agent and guard:** 96 unit and on-chain integration tests for every guard rule, the API, the passkey flow and the audit chain; 9 end-to-end tests with the real model for benign tasks and attacks; `make e2e-passkey` runs the passkey flow in Google Chrome.
+- **Agent and guard:** 97 unit and on-chain integration tests for every guard rule, the API, the passkey flow and the audit chain; 9 end-to-end tests with the real model for benign tasks and attacks; `make e2e-passkey` runs the passkey flow in Google Chrome.
 - **Red team:** 40 attacks in 8 categories plus 15 benign tasks, each run against four configurations (A no guard and plain wallet, B guard only, C vault only, D full Hufu), judged on-chain. Results below; every run is in [evidence/redteam/](evidence/redteam/README.md).
 
 **Red-team results** (final run [`20261019-210204`](evidence/redteam/20261019-210204/summary.md), 220 runs on commit `1b2474b`, Qwen3.5 9B on one local GPU, median 32 s per turn):

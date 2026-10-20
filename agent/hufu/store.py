@@ -6,6 +6,8 @@ Rows are scoped to a vault address so a redeployed local chain starts clean.
 
 import json
 import sqlite3
+import threading
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -60,11 +62,53 @@ def _now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
+class Rows:
+    """A statement's result, read in full while the lock is held, so no cursor outlives it."""
+
+    def __init__(self, cur: sqlite3.Cursor):
+        self.rowcount = cur.rowcount
+        self.lastrowid = cur.lastrowid
+        self._rows = cur.fetchall()
+
+    def fetchone(self) -> Any:
+        return self._rows[0] if self._rows else None
+
+    def fetchall(self) -> list[Any]:
+        return list(self._rows)
+
+    def __iter__(self) -> Iterator[Any]:
+        return iter(self._rows)
+
+
+class SharedConnection:
+    """One SQLite connection shared by the API's request threads and the autopilot thread.
+
+    sqlite3 does not serialise concurrent use of one connection: a dashboard poll racing an autopilot run
+    failed with "bad parameter or other API misuse", and that run never froze the wallet. Every call
+    holds one lock; `lock` is re-entrant so a read-then-write (the audit chain's next hash) can hold it too."""
+
+    def __init__(self, path: Path):
+        self._db = sqlite3.connect(path, check_same_thread=False)
+        self._db.row_factory = sqlite3.Row
+        self.lock = threading.RLock()
+
+    def execute(self, sql: str, params: Any = ()) -> Rows:
+        with self.lock:
+            return Rows(self._db.execute(sql, params))
+
+    def executescript(self, sql: str) -> None:
+        with self.lock:
+            self._db.executescript(sql)
+
+    def commit(self) -> None:
+        with self.lock:
+            self._db.commit()
+
+
 class Store:
     def __init__(self, path: Path, vault: str):
         path.parent.mkdir(parents=True, exist_ok=True)
-        self.db = sqlite3.connect(path, check_same_thread=False)
-        self.db.row_factory = sqlite3.Row
+        self.db = SharedConnection(path)
         self.db.executescript(SCHEMA)
         self.vault = vault.lower()
 

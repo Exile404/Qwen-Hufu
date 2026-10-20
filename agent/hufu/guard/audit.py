@@ -4,11 +4,13 @@ past entry breaks every hash after it. The head is periodically anchored on-chai
 """
 
 import json
-import sqlite3
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from eth_utils import keccak
+
+if TYPE_CHECKING:
+    from hufu.store import SharedConnection
 
 GENESIS = "0x" + "00" * 32
 
@@ -31,7 +33,7 @@ def _entry_hash(prev: str, ts: str, kind: str, data: str) -> str:
 
 
 class AuditLog:
-    def __init__(self, db: sqlite3.Connection, vault: str):
+    def __init__(self, db: "SharedConnection", vault: str):
         self.db = db
         self.vault = vault.lower()
         self.db.executescript(SCHEMA)
@@ -43,15 +45,16 @@ class AuditLog:
         return row[0] if row else GENESIS
 
     def append(self, kind: str, data: dict[str, Any]) -> str:
-        prev = self.head()
-        ts = datetime.now(UTC).isoformat(timespec="milliseconds")
         payload = json.dumps(data, default=str, ensure_ascii=False, sort_keys=True)
-        h = _entry_hash(prev, ts, kind, payload)
-        self.db.execute(
-            "INSERT INTO audit (vault, ts, kind, data, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?)",
-            (self.vault, ts, kind, payload, prev, h),
-        )
-        self.db.commit()
+        with self.db.lock:  # read the head and append in one step, or two threads could fork the chain
+            prev = self.head()
+            ts = datetime.now(UTC).isoformat(timespec="milliseconds")
+            h = _entry_hash(prev, ts, kind, payload)
+            self.db.execute(
+                "INSERT INTO audit (vault, ts, kind, data, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?)",
+                (self.vault, ts, kind, payload, prev, h),
+            )
+            self.db.commit()
         return h
 
     def recent(self, n: int = 20) -> list[dict[str, Any]]:

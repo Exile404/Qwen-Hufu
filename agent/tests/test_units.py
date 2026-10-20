@@ -90,3 +90,34 @@ def test_store_forgets_a_vaults_rows_when_its_deployment_changes(tmp_path):
     assert s.bind_deployment("31337:5:0xaaa") is False and len(s.approvals()) == 1  # same chain
     assert s.bind_deployment("31337:5:0xbbb") is True  # fresh chain, same vault address
     assert s.approvals() == [] and s.alerts() == [] and len(other.approvals()) == 1
+
+
+def test_store_and_audit_are_safe_across_threads(tmp_path):
+    """Dashboard polls racing the autopilot thread once failed with "bad parameter or other API misuse"."""
+    import threading
+
+    from hufu.guard.audit import AuditLog
+    from hufu.store import Store
+
+    store = Store(tmp_path / "hufu.db", "0x" + "11" * 20)
+    audit = AuditLog(store.db, store.vault)
+    errors: list[Exception] = []
+
+    def work(i: int) -> None:
+        try:
+            for j in range(50):
+                store.put(f"k{i}", j)
+                assert store.get(f"k{i}") == j
+                audit.append("tick", {"thread": i, "n": j})
+                audit.recent(5)
+                audit.mentions("0xabc")
+        except Exception as e:  # noqa: BLE001 - collect any failure from any thread
+            errors.append(e)
+
+    threads = [threading.Thread(target=work, args=(i,)) for i in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors, errors
+    assert audit.verify() == {"ok": True, "entries": 400, "head": audit.head()}
