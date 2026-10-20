@@ -50,7 +50,7 @@ The Qin-era Du Tiger Tally (杜虎符) carries a rule: the commander may act alo
 ## Layout
 
 ```
-contracts/   Solidity (Foundry): HufuVault, MockFXPool, MockStablecoin, deploy script, 94 tests
+contracts/   Solidity (Foundry): HufuVault, MockFXPool, MockStablecoin, deploy script, 97 tests
 agent/       Python: agent loop, tools, guard/, Huitong, chain client, FastAPI, red team, tests
 web/         Next.js 16 + shadcn/ui dashboard
 redteam/     scenarios.yaml: 40 attacks in 8 categories + 15 benign tasks
@@ -104,8 +104,8 @@ Quality checks (also run by [CI](.github/workflows/ci.yml) on every push, except
 
 | Check | Result |
 |---|---|
-| Contract tests (`forge test`) | 94 tests incl. fuzzing and 24 passkey tests; `HufuVault` 99% lines (the one uncounted line is inline assembly), 98% branches (`forge coverage --ir-minimum`) |
-| Contract static analysis | `forge lint` clean; Slither: no high or medium findings (10 low and 3 informational, all intentional and justified in the code) |
+| Contract tests (`forge test`) | 97 tests incl. fuzzing, 25 passkey tests and FISCO BCOS millisecond timestamps; `HufuVault` 99% lines (the one uncounted line is inline assembly), 98% branches (`forge coverage --ir-minimum`) |
+| Contract static analysis | `forge lint` clean; Slither: no high or medium findings (11 low and 3 informational, all intentional and justified in the code) |
 | Passkey in a browser | `make e2e-passkey`: register, approve, lock the owner key, unfreeze and cancel in Google Chrome with a virtual WebAuthn authenticator |
 | Agent | `ruff`, `mypy` clean; 84 unit and on-chain tests (`pytest -m "not llm"`) + 9 end-to-end tests with the model |
 | Dashboard | `pnpm typecheck`, `pnpm lint`, `pnpm build`; `pnpm audit --prod` and `pip-audit`: no known vulnerabilities |
@@ -132,6 +132,23 @@ HUFU_ENV=testnet make api   # then `make web`: the dashboard runs on Sepolia, wi
 The dashboard works the same on Sepolia; payments take about one block (12 s) to confirm. Reads are cached per block and sent as JSON-RPC batches, so each dashboard refresh costs only a few calls to the public node.
 
 Never reuse the public Anvil development keys on a public network.
+
+## FISCO BCOS
+
+Hufu also runs on [FISCO BCOS](https://github.com/FISCO-BCOS/FISCO-BCOS) 3.16, WeBank's open consortium chain, through its Ethereum-compatible Web3 RPC: the same contracts, agent and dashboard. All 24 evidence steps pass there too ([evidence](docs/evidence/onchain-20200.md)), including the passkey checked on-chain.
+
+```bash
+make fisco-chain              # one-node chain from pinned, checksum-verified releases (first run ~300 MB; Java 8+)
+make deploy-fisco             # the same Foundry deploy script
+HUFU_ENV=fisco make evidence  # or HUFU_ENV=fisco make api, then make web
+make fisco-stop
+```
+
+What the port needed:
+- **Time.** FISCO BCOS gives `block.timestamp` in milliseconds. The vault reads its clock through `_now()`, which converts a millisecond value to seconds; there are tests for this.
+- **Funding.** The Web3 RPC refuses transactions from accounts with no balance, so the script gives fresh test keys a balance with the official console.
+- **RPC details.** Log queries must name `toBlock`, and the node's batch limit is raised in its config.
+- **Gas.** FISCO has no P-256 precompile, so the passkey check runs OpenZeppelin's Solidity verifier, which costs about 340,000 gas.
 
 ## Honest limits
 

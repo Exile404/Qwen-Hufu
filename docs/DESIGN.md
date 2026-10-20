@@ -170,22 +170,23 @@ Each phase was built, then tested by hand and by automated tests, and fixed befo
 | Phase | What was built | How it was verified |
 |---|---|---|
 | **P0 Scaffold** | Repo, toolchain, local model, smoke tests | `make doctor`, `make test` |
-| **P1 Contracts** | `HufuVault`, `MockFXPool`, test stablecoins, deploy and seed script | Foundry tests (now 94, including fuzzing); local deployment |
+| **P1 Contracts** | `HufuVault`, `MockFXPool`, test stablecoins, deploy and seed script | Foundry tests (now 97, including fuzzing); local deployment |
 | **P2 Agent core** | Chain client, tools, agent loop, CLI chat | The everyday tasks run end to end in the CLI |
 | **P3 Guard** | Tiers, taint, scanner, lookalike detection, reply verifier, hash-chained audit with on-chain anchoring, kill switch | Hand-run attacks plus integration tests for every rule |
 | **P4–P5 Dashboard and student features** | API, Next.js dashboard, approvals, Huitong, attack lab | Click-through of the full demo story |
 | **P6 Red team** | 40 attacks and 15 normal tasks against four configurations, judged on-chain | The first full run found a real gap (split payments passed the per-payee limit); fixed in the contract and re-run: full Hufu 0/40 ([results](evidence/redteam/README.md)) |
 | **P7 Testnet** | Ethereum Sepolia deployment and evidence capture | Every step's transaction on Etherscan; contracts source-verified |
 | **P8 Hardening** | Autopilot (tripwire, due payments, funding ahead, scam alerts), cash-flow planner, compliance controls (sanctions screening, transfer records), CI | Autopilot and compliance tests on a private chain; CI on every push |
-| **P9 Passkey** | The student's half as a WebAuthn passkey, verified on-chain (`executeWithPasskey`); owner key lockable; dashboard sign-and-confirm flow | 24 Foundry tests incl. fuzzing; API tests on a private chain; the dashboard in Google Chrome with a virtual authenticator (`make e2e-passkey`); passkey-signed transactions on Sepolia |
+| **P9 Passkey** | The student's half as a WebAuthn passkey, verified on-chain (`executeWithPasskey`); owner key lockable; dashboard sign-and-confirm flow | 25 Foundry tests incl. fuzzing; API tests on a private chain; the dashboard in Google Chrome with a virtual authenticator (`make e2e-passkey`); passkey-signed transactions on Sepolia |
 | **P10 Final red team** | A re-run on the passkey release found the model inventing an amount for a saved payee (N06); the guard now asks unless the amount came from the student or a signed recurring payment | Final run on the submitted code: full Hufu 0/40 attacks and 15/15 normal tasks ([results](evidence/redteam/20261019-210204/summary.md)) |
+| **P11 FISCO BCOS** | One-command one-node FISCO BCOS 3.16 chain with its Web3 RPC; the vault reads FISCO's millisecond timestamps as seconds | All 24 evidence steps on FISCO BCOS ([evidence](evidence/onchain-20200.md)); Foundry tests with millisecond timestamps |
 
 ## 7. Stack decisions
 
 | Choice | Why |
 |---|---|
 | Qwen3.5 9B via Ollama, local (`hufu-qwen`, 16K ctx), `reasoning_effort=low` | Phase 2 eval, 3 runs × 4 agent tasks: **12/12 with low vs 9/12 with thinking off** (off narrates actions instead of calling tools). Median 32 s per turn in the final red-team run on one local GPU. Local = no personal data leaves the device. Any OpenAI-compatible API can be swapped in via `.env`. |
-| Anvil for dev, Ethereum Sepolia for evidence | Instant local loop; public explorer for judges. Plain Solidity, portable to FISCO BCOS (WeBank's chain) as a next step. |
+| Anvil for dev, Ethereum Sepolia for evidence, FISCO BCOS for WeBank's stack | Instant local loop; public explorer for judges. The same contracts run on FISCO BCOS (WeBank's chain) as a next step. |
 | Custom vault instead of a full ERC-4337 smart account | Small, fully tested (99% line coverage), easy to explain and to audit. |
 | Simple explicit agent loop (no framework) | Every step visible and logged, which the security report needs. The runtime nudges the model if it goes silent, claims an action it didn't take, or was asked to pay and didn't call a payment tool, and falls back to a factual summary of what ran. |
 | Deterministic money arithmetic in tools | The model decides *what*; code decides *how much*. E.g. `pay_due_mandates` converts exactly the tUSD needed. The 9B model invented conversion amounts when asked to do it itself. |

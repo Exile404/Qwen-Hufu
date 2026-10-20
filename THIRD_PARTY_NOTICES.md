@@ -9,6 +9,7 @@ Hufu's own code is released under the [MIT License](LICENSE). It is built on the
 | [OpenZeppelin Contracts](https://github.com/OpenZeppelin/openzeppelin-contracts) | 5.6.1 | MIT | `SafeERC20`, `ReentrancyGuard`, `WebAuthn` and `P256` (passkey signatures checked on-chain), `ERC20` (test tokens) |
 | [forge-std](https://github.com/foundry-rs/forge-std) | 1.17.0 | MIT or Apache-2.0 | Test and deploy-script helpers |
 | [Foundry](https://github.com/foundry-rs/foundry) (forge, cast, anvil) | 1.8.5 | MIT or Apache-2.0 | Build, test and local-chain tooling (not distributed) |
+| [FISCO BCOS](https://github.com/FISCO-BCOS/FISCO-BCOS) node and [console](https://github.com/FISCO-BCOS/console) | 3.16.4, 3.8.0 | Apache-2.0 | Downloaded by `make fisco-chain` into `.fisco/` (not distributed) |
 
 ## Agent (`agent/`)
 
@@ -52,6 +53,7 @@ Hufu's own code is released under the [MIT License](LICENSE). It is built on the
 | Data | Source | Terms |
 |---|---|---|
 | `agent/data/compliance/ofac_eth.txt` | U.S. Treasury OFAC SDN list ([sanctionslist.ofac.treas.gov](https://sanctionslist.ofac.treas.gov/Home/static/sdn.html)), fetched 19 Oct 2026 | Work of the U.S. Government, public domain in the U.S. Only the Ethereum-format addresses are kept |
+| Pitch deck photo of the Du Tiger Tally (not in this repository) | [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Qin_tiger_tally,_Shaanxi_History_Museum.jpg), by Deadkid dk | CC BY-SA 3.0; cropped; credited on the slide |
 | `agent/data/seed/` (emails, remittance routes and quotes) | Written for this project | Fictional people and sample numbers; MIT with the rest of the code |
 
 Regulatory texts cited in [docs/COMPLIANCE.md](docs/COMPLIANCE.md) are linked, not copied.

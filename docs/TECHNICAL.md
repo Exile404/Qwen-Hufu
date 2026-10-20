@@ -171,7 +171,7 @@ In the first version the student's half was an owner key on the same computer as
    - The passkey can unlock the key again. `removePasskey` is refused while the key is locked, so the vault always keeps a working owner.
 
 How it is tested:
-- 24 Foundry tests: replay, a relayer swapping the signed call for a withdrawal, a changed deadline, another vault's signature, the wrong key, missing user presence or verification, high-s signatures, rotation, locking, and a fuzz test over every byte of the signed call.
+- 25 Foundry tests: replay, a relayer swapping the signed call for a withdrawal, a changed deadline, another vault's signature, the wrong key, missing user presence or verification, high-s signatures, rotation, locking, and a fuzz test over every byte of the signed call.
 - 17 Python tests through the API on a private chain.
 - A run of the real dashboard in Google Chrome with a virtual WebAuthn authenticator (`scripts/passkey_e2e.py`: register, approve, lock, freeze and unfreeze, cancel).
 
@@ -193,12 +193,12 @@ See [SECURITY_SELF_ASSESSMENT.md](SECURITY_SELF_ASSESSMENT.md) for the threat mo
 
 ## 6. Evaluation
 
-- **Contracts:** 94 Foundry tests, including:
+- **Contracts:** 97 Foundry tests, including:
   - fuzzing: the daily cap is never exceeded, the per-payee daily cap holds across split payments, and changing any byte of a passkey-signed call fails;
   - key rotation and the jailbroken-agent scenario;
-  - 24 passkey tests (§4.12).
+  - 25 passkey tests (§4.12) and three with FISCO BCOS's millisecond timestamps (§7).
 
-  `HufuVault` coverage: 99% of lines (the one line not counted is inline assembly) and 98% of branches (`forge coverage --ir-minimum`). Static analysis: `forge lint` is clean. Slither reports no high or medium findings: 10 low (zero addresses accepted on purpose to revoke a role; timestamp comparisons for day-scale schedules and the 5-minute passkey deadline) and 3 informational (the passkey self-call and its error pass-through; a mock's interface).
+  `HufuVault` coverage: 99% of lines (the one line not counted is inline assembly) and 98% of branches (`forge coverage --ir-minimum`). Static analysis: `forge lint` is clean. Slither reports no high or medium findings: 11 low (zero addresses accepted on purpose to revoke a role; timestamp comparisons for day-scale schedules, the 5-minute passkey deadline and the millisecond check in `_now()`) and 3 informational (the passkey self-call and its error pass-through; a mock's interface).
 - **Code quality:** `ruff` and `mypy` clean; CI (`.github/workflows/ci.yml`) runs the contract, agent and dashboard checks on every push; `pip-audit` and `pnpm audit --prod` report no known vulnerabilities.
 - **Agent and guard:** 84 unit and on-chain integration tests for every guard rule, the API, the passkey flow and the audit chain; 9 end-to-end tests with the real model for benign tasks and attacks; `make e2e-passkey` runs the passkey flow in Google Chrome.
 - **Red team:** 40 attacks in 8 categories plus 15 benign tasks, each run against four configurations (A no guard and plain wallet, B guard only, C vault only, D full Hufu), judged on-chain. Results below; every run is in [evidence/redteam/](evidence/redteam/README.md).
@@ -248,12 +248,18 @@ make redteam        # the full red-team suite on a private chain
 
 **Ethereum Sepolia.** Deployed vault [`0x1F60ee92DAFF902a957801029312e39010144c1e`](https://sepolia.etherscan.io/address/0x1F60ee92DAFF902a957801029312e39010144c1e#code), source-verified on Etherscan and Sourcify (exact match), as are the two test tokens and the FX pool (`make verify-testnet`); every demo step and its transaction is in [evidence/onchain-11155111.md](evidence/onchain-11155111.md) (`HUFU_ENV=testnet make evidence`). Sepolia now prices contract creation and new storage several times higher than Foundry's local simulation, so `make deploy-testnet` raises gas limits 10× (`--gas-estimate-multiplier 1000`); the whole deployment used 43.9M gas and cost under 0.000000001 ETH at Sepolia's gas price. The evidence includes the passkey steps (§4.12): a payee approved with a passkey signature, the owner key locked by the passkey, and the locked key's withdrawal [reverted](https://sepolia.etherscan.io/tx/0xf0a355d573265f9687fce2fcf63287b5eaa9abaa7f00eb2717b4a65bf38237c5) with `NotOwner`. A software passkey signs there; it produces the same WebAuthn format as a phone, and the vault's check is the same.
 
+**FISCO BCOS.** Hufu also runs on FISCO BCOS 3.16, WeBank's open consortium chain, through its Ethereum-compatible Web3 RPC. The contracts, deploy script, agent and dashboard are the same. `make fisco-chain` builds a one-node chain from pinned, checksum-verified releases; then come `make deploy-fisco` and `HUFU_ENV=fisco make evidence`. All 24 evidence steps behave as on Sepolia ([evidence/onchain-20200.md](evidence/onchain-20200.md)), and the dashboard API serves every view. Four differences had to be handled:
+1. **Time.** FISCO gives `block.timestamp` in milliseconds. Session expiry, due dates, daily caps and passkey deadlines would all have been wrong, so the vault reads its clock through `_now()`. A value above 10^12 cannot be seconds (it would be after the year 33,000), so it is divided by 1,000. On Ethereum `_now()` is `block.timestamp` unchanged; three Foundry tests run the vault with millisecond timestamps.
+2. **Funding.** The Web3 RPC refuses any transaction from an account with no balance, even at a gas price of 0. The script turns on FISCO's balance feature and gives fresh test keys a balance with the official console.
+3. **RPC details.** `eth_getLogs` needs an explicit `toBlock`, and a one-call batch comes back as a bare object, so the agent names `toBlock` and does not batch a single read. The node's batch limit (8 by default) is raised to 64.
+4. **No P-256 precompile.** OpenZeppelin's Solidity verifier runs instead: about 340,000 gas for a passkey-signed action, against 168,000 on Sepolia.
+
 ## 8. Limitations and next steps
 
 - **What the passkey cannot show.** A passkey prompt says which site is asking but not what is being signed; WebAuthn has no transaction display. The dashboard shows the exact call before the passkey is asked, but a fully compromised computer could show one action and have another signed. Each signature still needs the student's fingerprint, face or PIN, covers one action and expires in 5 minutes. The next step is a trusted display: the student's phone rendering the request itself.
 - **Recovery.** If the student loses every device holding the passkey while the owner key is locked, only freezing and the agent's limited payments keep working. Synced passkeys (iCloud Keychain, Google Password Manager) make this unlikely; production would add guardian-assisted recovery behind a time lock.
 - Until the student registers a passkey and locks the owner key, the demo owner key still sits on the same machine.
 - The vault is a purpose-built contract rather than an ERC-4337 smart account; porting the policy to account-abstraction session keys is straightforward.
-- The contracts are plain Solidity and portable to FISCO BCOS, WeBank's open consortium chain.
+- Hufu runs on a one-node FISCO BCOS chain (§7). A consortium of institutions, each running nodes, with FISCO's account permissions in place of the demo's single admin, is the step after that.
 - Scam intelligence is local rules. Sharing lookalike and scam-address signals across institutions without sharing customer data is a natural fit for federated learning (e.g. FATE).
 - Remittance quotes are sample data; a production Huitong would use licensed providers' live quotes.
