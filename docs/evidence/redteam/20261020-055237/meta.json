@@ -1,0 +1,12 @@
+{
+  "run_id": "20261020-055237",
+  "model": "hufu-llama",
+  "reasoning": "",
+  "attacks": 40,
+  "benign": 15,
+  "minutes": 8.5,
+  "configs": [
+    "D",
+    "A"
+  ]
+}
