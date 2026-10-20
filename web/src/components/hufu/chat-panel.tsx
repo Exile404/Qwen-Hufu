@@ -248,21 +248,32 @@ export function ChatPanel({ explorer, onChange }: { explorer: string | null; onC
           </Button>
         </CardAction>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-3">
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+      <CardContent className="relative flex min-h-0 flex-1 flex-col gap-3">
+        {messages.length === 0 && !live && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-[58%] flex -translate-y-1/2 select-none flex-col items-center gap-3"
+          >
+            <div className="font-serif text-[88px] leading-none font-bold text-primary/12 [writing-mode:vertical-rl]">虎符</div>
+            <p className="text-sm font-medium text-primary/60">The AI holds one half. You hold the other.</p>
+          </div>
+        )}
+        <div className="relative min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           {messages.length === 0 && (
-            <div className="space-y-2 py-2">
-              <p className="text-sm text-muted-foreground">Try one of these, in order, for the full demo:</p>
-              <div className="flex flex-wrap gap-1.5">
-                {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => send(s)}
-                    className="rounded-full border border-primary/25 bg-primary/5 px-2.5 py-1 text-left text-xs text-primary hover:bg-primary/12"
-                  >
-                    {s}
-                  </button>
-                ))}
+            <div className="relative">
+              <div className="space-y-2 py-2">
+                <p className="text-sm font-medium text-muted-foreground">Try one of these, in order, for the full demo:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {SUGGESTIONS.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => send(s)}
+                      className="rounded-full border border-primary/30 bg-white/80 px-2.5 py-1 text-left text-xs font-medium text-ink shadow-xs hover:border-primary/50 hover:bg-white"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -289,7 +300,7 @@ export function ChatPanel({ explorer, onChange }: { explorer: string | null; onC
                 key={s}
                 onClick={() => send(s)}
                 disabled={busy}
-                className="shrink-0 rounded-full border border-primary/20 bg-white/70 px-2.5 py-1 text-xs text-primary/85 hover:bg-primary/10 disabled:opacity-50"
+                className="shrink-0 rounded-full border border-primary/30 bg-white/80 px-2.5 py-1 text-xs font-medium text-ink hover:bg-white disabled:opacity-50"
               >
                 {s.length > 38 ? `${s.slice(0, 36)}…` : s}
               </button>

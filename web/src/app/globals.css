@@ -14,6 +14,7 @@
   --color-seal-foreground: var(--seal-foreground);
   --color-bronze: var(--bronze);
   --color-gold: var(--gold);
+  --color-ink: var(--ink);
   --color-glow: var(--glow);
   --color-charcoal: var(--charcoal);
   --color-allow: var(--allow);
@@ -69,7 +70,8 @@
   --secondary: oklch(0.955 0.015 200);
   --secondary-foreground: oklch(0.3 0.04 210);
   --muted: oklch(0.96 0.012 200);
-  --muted-foreground: oklch(0.5 0.02 215);
+  --muted-foreground: oklch(0.42 0.025 215);
+  --ink: oklch(0.4 0.08 208);
   --accent: oklch(0.95 0.02 200);
   --accent-foreground: oklch(0.3 0.05 210);
   --destructive: oklch(0.577 0.245 27.325);
@@ -183,6 +185,10 @@
   }
   [data-slot="card-title"] {
     color: var(--card-title);
+    font-weight: 600;
+  }
+  [data-slot="card-description"] {
+    font-weight: 500;
   }
   [data-slot="card-title"] > svg {
     color: var(--primary);
@@ -190,9 +196,10 @@
   /* the chat panel: a faint teal glow in the corners */
   .hufu-chat[data-slot="card"] {
     background-image:
-      radial-gradient(70% 55% at 100% 100%, oklch(0.93 0.05 200 / 0.55), transparent 70%),
-      radial-gradient(50% 40% at 0% 100%, oklch(0.95 0.035 190 / 0.5), transparent 70%),
-      linear-gradient(180deg, var(--card-wash) 0, transparent 92px);
+      radial-gradient(75% 55% at 100% 100%, oklch(0.86 0.08 200 / 0.6), transparent 70%),
+      radial-gradient(60% 45% at 0% 100%, oklch(0.9 0.06 190 / 0.55), transparent 70%),
+      radial-gradient(50% 35% at 100% 0%, oklch(0.9 0.05 205 / 0.5), transparent 70%),
+      linear-gradient(180deg, oklch(0.94 0.035 200) 0%, oklch(0.965 0.022 200) 40%, oklch(0.95 0.03 198) 100%);
   }
   /* the vault, drawn like a WeBank card: charcoal, a teal-cyan glow and a gold chip */
   .hufu-bankcard[data-slot="card"] {
